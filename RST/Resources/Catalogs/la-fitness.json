@@ -1,0 +1,29 @@
+{
+  "id": "la-fitness",
+  "name": "LA Fitness",
+  "machines": [
+    {"id": "lat-pulldown", "name": "Lat Pulldown", "category": "Back", "muscleGroups": ["Lats", "Biceps"], "stackMin": 10, "stackMax": 250, "increment": 10},
+    {"id": "seated-row", "name": "Seated Row", "category": "Back", "muscleGroups": ["Lats", "Rhomboids", "Biceps"], "stackMin": 10, "stackMax": 250, "increment": 10},
+    {"id": "assisted-pullup", "name": "Assisted Pull-Up / Dip", "category": "Back", "muscleGroups": ["Lats", "Triceps"], "stackMin": 10, "stackMax": 200, "increment": 10},
+    {"id": "back-extension", "name": "Back Extension", "category": "Back", "muscleGroups": ["Lower Back", "Glutes"], "stackMin": 10, "stackMax": 200, "increment": 10},
+    {"id": "chest-press", "name": "Chest Press", "category": "Chest", "muscleGroups": ["Pecs", "Triceps", "Front Delts"], "stackMin": 10, "stackMax": 300, "increment": 10},
+    {"id": "incline-press", "name": "Incline Press", "category": "Chest", "muscleGroups": ["Upper Pecs", "Front Delts"], "stackMin": 10, "stackMax": 250, "increment": 10},
+    {"id": "pec-fly", "name": "Pec Fly / Rear Delt", "category": "Chest", "muscleGroups": ["Pecs", "Rear Delts"], "stackMin": 10, "stackMax": 220, "increment": 10},
+    {"id": "cable-crossover", "name": "Cable Crossover", "category": "Chest", "muscleGroups": ["Pecs", "Front Delts"], "stackMin": 5, "stackMax": 100, "increment": 5},
+    {"id": "shoulder-press", "name": "Shoulder Press", "category": "Shoulders", "muscleGroups": ["Delts", "Triceps"], "stackMin": 10, "stackMax": 220, "increment": 10},
+    {"id": "lateral-raise", "name": "Lateral Raise", "category": "Shoulders", "muscleGroups": ["Side Delts"], "stackMin": 10, "stackMax": 150, "increment": 5},
+    {"id": "bicep-curl", "name": "Bicep Curl", "category": "Arms", "muscleGroups": ["Biceps"], "stackMin": 10, "stackMax": 150, "increment": 5},
+    {"id": "tricep-extension", "name": "Tricep Extension", "category": "Arms", "muscleGroups": ["Triceps"], "stackMin": 10, "stackMax": 150, "increment": 5},
+    {"id": "tricep-pushdown", "name": "Tricep Pushdown", "category": "Arms", "muscleGroups": ["Triceps"], "stackMin": 10, "stackMax": 200, "increment": 10},
+    {"id": "leg-press", "name": "Leg Press", "category": "Legs", "muscleGroups": ["Quads", "Glutes", "Hamstrings"], "stackMin": 50, "stackMax": 400, "increment": 25},
+    {"id": "hack-squat", "name": "Hack Squat (Selectorized)", "category": "Legs", "muscleGroups": ["Quads", "Glutes"], "stackMin": 50, "stackMax": 400, "increment": 25},
+    {"id": "leg-extension", "name": "Leg Extension", "category": "Legs", "muscleGroups": ["Quads"], "stackMin": 10, "stackMax": 250, "increment": 10},
+    {"id": "seated-leg-curl", "name": "Seated Leg Curl", "category": "Legs", "muscleGroups": ["Hamstrings"], "stackMin": 10, "stackMax": 250, "increment": 10},
+    {"id": "lying-leg-curl", "name": "Lying Leg Curl", "category": "Legs", "muscleGroups": ["Hamstrings"], "stackMin": 10, "stackMax": 200, "increment": 10},
+    {"id": "hip-abduction", "name": "Hip Abduction", "category": "Legs", "muscleGroups": ["Glutes", "Abductors"], "stackMin": 10, "stackMax": 250, "increment": 10},
+    {"id": "hip-adduction", "name": "Hip Adduction", "category": "Legs", "muscleGroups": ["Adductors"], "stackMin": 10, "stackMax": 250, "increment": 10},
+    {"id": "calf-raise", "name": "Seated Calf Raise", "category": "Legs", "muscleGroups": ["Calves"], "stackMin": 10, "stackMax": 250, "increment": 10},
+    {"id": "ab-crunch", "name": "Ab Crunch", "category": "Core", "muscleGroups": ["Abs"], "stackMin": 10, "stackMax": 200, "increment": 10},
+    {"id": "torso-rotation", "name": "Torso Rotation", "category": "Core", "muscleGroups": ["Obliques"], "stackMin": 10, "stackMax": 200, "increment": 10}
+  ]
+}
