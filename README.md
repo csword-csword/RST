@@ -1,6 +1,8 @@
-# RST — Smart Weight-Stack Workout Tracker
+# Pinpoint — Smart Weight-Stack Workout Tracker
 
 iOS app for tracking workouts on weight-stack machines fitted with a **smart pin**: a digital replacement for the standard stack pin containing a Bluetooth beacon and an accelerometer.
+
+> Brand: **Pinpoint** (pinpoint.fitness). The repo, Xcode project, and code keep the original internal name **RST** for old time's sake.
 
 The device API isn't available yet, so **all hardware and ML integrations are stubbed behind protocols** with realistic mock implementations — the entire app flow is buildable and demoable today, and the real SDK drops into the same interfaces.
 

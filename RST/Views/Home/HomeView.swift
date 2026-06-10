@@ -35,7 +35,7 @@ struct HomeView: View {
                 .padding(.bottom, 24)
             }
             .background(Theme.background)
-            .navigationTitle("RST")
+            .navigationTitle("Pinpoint")
         }
         .onAppear { locationService.requestLocation() }
         .fullScreenCover(item: $launch) { launch in
