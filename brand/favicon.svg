@@ -1,0 +1,29 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <defs>
+    <radialGradient id="puckFace" cx=".36" cy=".3" r="1">
+      <stop offset="0" stop-color="#42484F"/><stop offset=".55" stop-color="#22262C"/><stop offset="1" stop-color="#101317"/>
+    </radialGradient>
+    <radialGradient id="ledR" cx=".4" cy=".35" r="1">
+      <stop offset="0" stop-color="#FFC2B8"/><stop offset=".35" stop-color="#FF4D42"/><stop offset="1" stop-color="#B5121F"/>
+    </radialGradient>
+    <radialGradient id="glowR" cx=".5" cy=".5" r=".5">
+      <stop offset="0" stop-color="#FF4D42" stop-opacity=".5"/><stop offset=".45" stop-color="#FF4D42" stop-opacity=".15"/><stop offset="1" stop-color="#FF4D42" stop-opacity="0"/>
+    </radialGradient>
+    <path id="arcTop" d="M 102.5,256 A 153.5,153.5 0 0 1 409.5,256"/>
+    <path id="arcBottom" d="M 65,256 A 191,191 0 0 0 447,256"/>
+  </defs>
+  <circle cx="256" cy="256" r="250" fill="#0A0C0F"/>
+  <circle cx="256" cy="256" r="242" fill="url(#puckFace)"/>
+  <circle cx="256" cy="256" r="203" fill="none" stroke="#0B0D10" stroke-width="8" opacity=".8"/>
+  <circle cx="256" cy="256" r="203" fill="none" stroke="#FFFFFF" stroke-width="2.4" opacity=".05"/>
+  <path d="M 74,118 A 242,242 0 0 1 330,28" fill="none" stroke="#FFFFFF" stroke-width="12" opacity=".07" stroke-linecap="round"/>
+  <circle cx="256" cy="256" r="139" fill="url(#glowR)"/>
+  <circle cx="256" cy="256" r="52" fill="url(#ledR)"/>
+  <circle cx="239" cy="239" r="12" fill="#FFE3DE" opacity=".9"/>
+  <g font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="39" font-weight="700" fill="#98A2AF" letter-spacing="10">
+    <text><textPath href="#arcTop" startOffset="50%" text-anchor="middle">PINPOINT</textPath></text>
+    <text><textPath href="#arcBottom" startOffset="50%" text-anchor="middle">FITNESS</textPath></text>
+  </g>
+  <circle cx="84" cy="256" r="5.3" fill="#98A2AF"/>
+  <circle cx="428" cy="256" r="5.3" fill="#98A2AF"/>
+</svg>
