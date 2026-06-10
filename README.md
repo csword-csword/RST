@@ -6,10 +6,11 @@ The device API isn't available yet, so **all hardware and ML integrations are st
 
 ## The workout flow
 
-1. **Select weight** — choose what you're about to lift.
-2. **Scan machine** — point the camera at the machine; a vision model identifies the equipment type (lat pulldown, chest press, …). *Stub: `MockEquipmentClassifier`.*
-3. **Read the stack** — point the camera at the weight stack; the app reads the pin position and infers the loaded weight. *Stub: `MockWeightStackReader`.*
-4. **Lift** — sets and reps are tracked live from the pin's accelerometer, with automatic set-end detection on rest. *Stub: `MockPinDevice` (simulates reps every 2–3.5 s and rest detection).*
+Setting the weight is a physical action — you place the smart pin in the stack at the machine. The app then:
+
+1. **Scan machine** — point the camera at the machine; a vision model identifies the equipment type (lat pulldown, chest press, …). *Stub: `MockEquipmentClassifier`.*
+2. **Read the stack** — point the camera at the weight stack; the app reads where the pin was placed and infers the loaded weight (with a correction stepper for misreads, and a mismatch warning when a template calls for a different weight). *Stub: `MockWeightStackReader`.*
+3. **Lift** — sets and reps are tracked live from the pin's accelerometer, with automatic set-end detection on rest. *Stub: `MockPinDevice` (simulates reps every 2–3.5 s and rest detection).*
 
 Plus:
 

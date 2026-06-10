@@ -1,11 +1,14 @@
 import SwiftUI
 
-/// Step 3: point the camera at the weight stack; the (stubbed) reader infers
-/// the loaded weight from the smart pin's position.
+/// Point the camera at the weight stack; the (stubbed) reader detects where
+/// the smart pin was physically placed and infers the loaded weight. The
+/// stepper lets the user correct a misread.
 struct StackScanView: View {
     @Environment(\.stackReader) private var stackReader
     let machine: Machine
-    let selectedWeight: Double
+    /// Target weight from the workout plan, if running a template — used only
+    /// to flag a mismatch with what's actually pinned.
+    let plannedWeight: Double?
     let unit: WeightUnit
     var onConfirm: (Double) -> Void
 
@@ -15,8 +18,8 @@ struct StackScanView: View {
     @State private var scanID = UUID()
 
     private var mismatch: Bool {
-        guard let reading else { return false }
-        return reading.weight != machine.snappedWeight(selectedWeight)
+        guard let reading, let plannedWeight else { return false }
+        return reading.weight != machine.snappedWeight(plannedWeight)
     }
 
     var body: some View {
@@ -76,13 +79,14 @@ struct StackScanView: View {
                     Text("Pin detected · \(Int(reading.confidence * 100))% confidence")
                         .font(.caption)
                         .foregroundStyle(.secondary)
-                    if mismatch {
-                        Label("Differs from your target of \(formatWeight(machine.snappedWeight(selectedWeight), unit: unit))",
+                    if mismatch, let plannedWeight {
+                        Label("Your plan calls for \(formatWeight(machine.snappedWeight(plannedWeight), unit: unit)) — move the pin or confirm as-is",
                               systemImage: "exclamationmark.triangle.fill")
                             .font(.caption.bold())
                             .foregroundStyle(Theme.warning)
+                            .multilineTextAlignment(.center)
                     }
-                    Stepper("Adjust",
+                    Stepper("Correct misread",
                             value: $confirmedWeight,
                             in: machine.stackMin...machine.stackMax,
                             step: machine.increment)
@@ -106,7 +110,7 @@ struct StackScanView: View {
     private func scan() async {
         isScanning = true
         reading = nil
-        if let result = try? await stackReader.readStack(for: machine, selectedWeight: selectedWeight) {
+        if let result = try? await stackReader.readStack(for: machine, plannedWeight: plannedWeight) {
             withAnimation(.snappy) {
                 reading = result
                 confirmedWeight = result.weight

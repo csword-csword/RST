@@ -1,12 +1,12 @@
 import SwiftData
 import SwiftUI
 
-/// Drives a live workout session through the product flow:
-/// 1. select weight → 2. scan machine → 3. read the stack → 4. lift
+/// Drives a live workout session through the product flow. The weight itself
+/// is set physically by placing the smart pin in the stack; in the app:
+/// 1. scan machine → 2. read the stack (detects the pinned weight) → 3. lift,
 /// then loops back for the next machine until the user finishes.
 struct WorkoutFlowView: View {
     enum FlowStep {
-        case weightSelect
         case machineScan
         case stackScan
         case lifting
@@ -24,8 +24,7 @@ struct WorkoutFlowView: View {
     @AppStorage("weightUnit") private var weightUnitRaw = WeightUnit.lb.rawValue
 
     @State private var workout: Workout?
-    @State private var step: FlowStep = .weightSelect
-    @State private var selectedWeight: Double = 100
+    @State private var step: FlowStep = .machineScan
     @State private var machine: Machine?
     @State private var currentEntry: ExerciseEntry?
     @State private var plannedIndex = 0
@@ -66,7 +65,6 @@ struct WorkoutFlowView: View {
 
     private var title: String {
         switch step {
-        case .weightSelect: return "Select Weight"
         case .machineScan: return "Scan Machine"
         case .stackScan: return "Read Stack"
         case .lifting: return machine?.name ?? "Lifting"
@@ -77,10 +75,6 @@ struct WorkoutFlowView: View {
     @ViewBuilder
     private var content: some View {
         switch step {
-        case .weightSelect:
-            WeightSelectView(weight: $selectedWeight, planned: plannedExercise, unit: unit) {
-                step = .machineScan
-            }
         case .machineScan:
             MachineScanView(candidates: catalog.machines, planned: plannedExercise) { picked in
                 machine = picked
@@ -88,7 +82,9 @@ struct WorkoutFlowView: View {
             }
         case .stackScan:
             if let machine {
-                StackScanView(machine: machine, selectedWeight: selectedWeight, unit: unit) { confirmed in
+                StackScanView(machine: machine,
+                              plannedWeight: plannedExercise?.targetWeight,
+                              unit: unit) { confirmed in
                     beginExercise(weight: confirmed)
                 }
             }
@@ -201,9 +197,6 @@ struct WorkoutFlowView: View {
         workout = newWorkout
         locationService.requestLocation()
         applyLocation(to: newWorkout)
-        if let planned = plannedExercise {
-            selectedWeight = planned.targetWeight
-        }
     }
 
     private func applyLocation(to workout: Workout) {
@@ -230,10 +223,7 @@ struct WorkoutFlowView: View {
         }
         machine = nil
         currentEntry = nil
-        if let planned = plannedExercise {
-            selectedWeight = planned.targetWeight
-        }
-        step = .weightSelect
+        step = .machineScan
     }
 
     private func finishWorkout(save: Bool) {
