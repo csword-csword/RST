@@ -1,15 +1,15 @@
 import SwiftUI
 
 enum Theme {
-    static let accent = Color(red: 0.30, green: 0.87, blue: 0.60)
-    static let accentDim = Color(red: 0.16, green: 0.50, blue: 0.36)
+    static let accent = Color(red: 1.0, green: 0.35, blue: 0.31)
+    static let accentDim = Color(red: 0.55, green: 0.17, blue: 0.15)
     static let background = Color(red: 0.05, green: 0.06, blue: 0.08)
     static let card = Color(red: 0.11, green: 0.12, blue: 0.15)
     static let warning = Color(red: 0.98, green: 0.73, blue: 0.25)
 
     static var accentGradient: LinearGradient {
         LinearGradient(
-            colors: [accent, Color(red: 0.18, green: 0.65, blue: 0.78)],
+            colors: [Color(red: 1.0, green: 0.42, blue: 0.35), Color(red: 0.78, green: 0.12, blue: 0.18)],
             startPoint: .topLeading,
             endPoint: .bottomTrailing
         )
@@ -32,7 +32,7 @@ struct PrimaryButtonStyle: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
             .font(.headline)
-            .foregroundStyle(.black)
+            .foregroundStyle(.white)
             .frame(maxWidth: .infinity)
             .padding(.vertical, 16)
             .background(Theme.accentGradient, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
