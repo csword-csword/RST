@@ -55,6 +55,17 @@ twist_deg      = 70;    // quarter-turn lock angle
 oring          = true;  // O-ring groove on the lid plug for sweat resistance
 oring_cs       = 1.5;   // O-ring cross-section (e.g., 1.5mm)
 
+// ---- Lanyard attachment ------------------------------------------------------
+// Attaches to the BODY (never the removable lid) and sits near the front rim so
+// the puck hangs like a branded medallion with the LED/engraved face outward.
+// Use a real lanyard with a SPLIT RING + BREAKAWAY clasp (safety near equipment).
+lanyard        = true;
+lanyard_ang    = 90;    // position around the rim (deg). 90 = "top"
+ear_proj       = 7.0;   // how far the loop boss sticks out past the rim
+ear_thick      = 8.0;   // boss thickness along the puck axis (>= hole + ~3)
+ear_hole       = 4.5;   // through-hole for a split ring
+ear_boss       = 9.0;   // outer boss diameter (leaves wall around the hole)
+
 // ---- Derived -----------------------------------------------------------------
 inner_dia  = max(sensor_dia, batt_dia) + 1.0;     // cavity diameter
 cavity_len = sensor_thick + batt_thick + 1.0;     // cavity depth
@@ -91,9 +102,30 @@ module bayonet_slots(at_radius) {
         }
 }
 
+// Lanyard loop: a rounded boss on the rim with a through-hole for a split ring.
+ear_z = body_len - ear_thick/2 - 1;
+module lanyard_ear_solid() {
+    rotate([0,0, lanyard_ang])
+        translate([0,0, ear_z])
+            linear_extrude(height = ear_thick, center = true)
+                hull() {
+                    translate([grip_dia/2 - 2, 0]) circle(d = ear_boss);
+                    translate([grip_dia/2 + ear_proj, 0]) circle(d = ear_boss);
+                }
+}
+module lanyard_ear_hole() {
+    rotate([0,0, lanyard_ang])
+        translate([grip_dia/2 + ear_proj - ear_boss*0.35, 0, ear_z])
+            cylinder(d = ear_hole, h = ear_thick + 4, center = true);
+}
+
 module body() {
     difference() {
-        knurled_cylinder(grip_dia, body_len);
+        union() {
+            knurled_cylinder(grip_dia, body_len);
+            if (lanyard) lanyard_ear_solid();
+        }
+        if (lanyard) lanyard_ear_hole();
         // front cavity (holds sensor + battery, and receives the lid)
         translate([0,0, body_len - cavity_len - lid_len + 0.01])
             cylinder(d=bore_dia, h=cavity_len + lid_len);
