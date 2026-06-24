@@ -34,6 +34,35 @@ final class WorkoutStatsTests: XCTestCase {
         XCTAssertEqual(pr.estimatedOneRepMax, 120 * (1 + 8.0 / 30.0), accuracy: 0.01)
     }
 
+    func testCadenceTUTAndIntervals() {
+        let set = SetRecord(reps: 4, weight: 50, startedAt: Date(), repOffsets: [0, 2, 4, 6])
+        XCTAssertEqual(WorkoutStats.repIntervals(set), [2, 2, 2])
+        XCTAssertEqual(WorkoutStats.cadence(set) ?? 0, 2.0, accuracy: 0.001)
+        XCTAssertEqual(WorkoutStats.timeUnderTension(set) ?? 0, 6.0, accuracy: 0.001)
+    }
+
+    func testCadenceFallsBackToDurationWithoutOffsets() {
+        let start = Date()
+        let set = SetRecord(reps: 5, weight: 50, startedAt: start, endedAt: start.addingTimeInterval(10))
+        XCTAssertEqual(WorkoutStats.cadence(set) ?? 0, 2.0, accuracy: 0.001) // 10s / 5 reps
+    }
+
+    func testFormSummaryConsistency() throws {
+        let ctx = try makeContext()
+        let workout = Workout()
+        ctx.insert(workout)
+        let exercise = ExerciseEntry(machineID: "m", machineName: "M", weight: 50)
+        workout.exercises.append(exercise)
+        exercise.sets.append(SetRecord(reps: 4, weight: 50, startedAt: .now, repOffsets: [0, 2, 4, 6]))
+        exercise.sets.append(SetRecord(reps: 4, weight: 50, startedAt: .now, repOffsets: [0, 2, 4, 6]))
+
+        let form = try XCTUnwrap(WorkoutStats.formSummary(from: [workout]))
+        XCTAssertEqual(form.avgCadence, 2.0, accuracy: 0.001)
+        XCTAssertEqual(form.avgTimeUnderTension, 6.0, accuracy: 0.001)
+        XCTAssertEqual(form.repConsistency ?? 0, 1.0, accuracy: 0.001)      // identical sets
+        XCTAssertEqual(form.cadenceConsistency ?? 0, 1.0, accuracy: 0.001)
+    }
+
     func testWeeklyVolumeBucketsCurrentWeek() throws {
         let ctx = try makeContext()
         let cal = Calendar(identifier: .gregorian)

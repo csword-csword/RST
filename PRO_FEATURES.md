@@ -19,11 +19,16 @@ Recurring fit: ★ (nice) → ★★★ (strongly justifies an annual fee).
 - **Voice coach** — Pro: speaks rep counts and "time for your next set," ducking
   your music (`VoiceCoach`, AVSpeechSynthesizer). Toggle in Settings.
 
-### Rep-quality insights — feasibility (important)
-What's computable depends on the **data path**:
+### Rep-quality insights
+**Shipped** (Insights → Tempo & Form, Pro): average rep time (cadence),
+time-under-tension per set, within-set **fatigue** (reps slowing), and **rep /
+tempo consistency**. These are computed from per-rep timestamps captured live
+(`SetRecord.repOffsets`).
+
+Feasibility by **data path**:
 - **Advertisement broadcast (current, ≤10 Hz):** reliable for rep count, set
-  detection, rest timing, set cadence, and *rough* tempo / time-under-tension
-  (±0.1–0.2 s). Good enough for coaching cues and consistency feedback.
+  detection, rest timing, cadence, TUT, fatigue, and consistency (the shipped
+  set). Good for coaching cues and form feedback.
 - **NOT reliable from 10 Hz:** true velocity-based-training metrics (mean
   concentric velocity in m/s), range of motion, or power — these need
   double-integration of a high-rate, calibrated stream.

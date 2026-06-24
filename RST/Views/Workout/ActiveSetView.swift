@@ -19,6 +19,7 @@ struct ActiveSetView: View {
     @State private var restStartedAt: Date?
     @State private var restRemaining = 0
     @State private var restDone = false
+    @State private var repOffsets: [Double] = []
     @State private var voice = VoiceCoach()
 
     private let ticker = Timer.publish(every: 1, on: .main, in: .common).autoconnect()
@@ -76,9 +77,10 @@ struct ActiveSetView: View {
             }
         }
         .onChange(of: pin.repCount) { oldCount, newCount in
-            if pin.phase == .lifting, voiceActive, newCount > oldCount, newCount > 0 {
-                voice.rep(newCount)
-            }
+            guard pin.phase == .lifting, newCount > oldCount else { return }
+            let elapsed = Date().timeIntervalSince(setStartedAt ?? Date())
+            for _ in oldCount..<newCount { repOffsets.append(elapsed) }
+            if voiceActive, newCount > 0 { voice.rep(newCount) }
         }
         .onReceive(ticker) { _ in tickRest() }
     }
@@ -246,6 +248,7 @@ struct ActiveSetView: View {
         restStartedAt = nil
         restDone = false
         restRemaining = 0
+        repOffsets = []
         pin.beginSet()
     }
 
@@ -254,7 +257,8 @@ struct ActiveSetView: View {
         guard pin.repCount > 0 else { return }
         let record = SetRecord(reps: pin.repCount,
                                weight: entry.weight,
-                               startedAt: setStartedAt ?? .now)
+                               startedAt: setStartedAt ?? .now,
+                               repOffsets: repOffsets)
         entry.sets.append(record)
 
         // Begin the rest timer for the next set.

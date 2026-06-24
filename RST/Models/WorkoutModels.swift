@@ -52,13 +52,17 @@ final class SetRecord {
     var weight: Double
     var startedAt: Date
     var endedAt: Date
+    /// Seconds-from-set-start for each detected rep, used for tempo, cadence,
+    /// time-under-tension, and consistency analytics. Empty for older records.
+    var repOffsets: [Double] = []
     var exercise: ExerciseEntry?
 
-    init(reps: Int, weight: Double, startedAt: Date, endedAt: Date = .now) {
+    init(reps: Int, weight: Double, startedAt: Date, endedAt: Date = .now, repOffsets: [Double] = []) {
         self.reps = reps
         self.weight = weight
         self.startedAt = startedAt
         self.endedAt = endedAt
+        self.repOffsets = repOffsets
     }
 }
 

@@ -27,6 +27,7 @@ struct InsightsView: View {
                 ScrollView {
                     VStack(spacing: 16) {
                         volumeCard
+                        formCard
                         muscleCard
                         prCard
                     }
@@ -60,6 +61,45 @@ struct InsightsView: View {
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .card()
+    }
+
+    @ViewBuilder
+    private var formCard: some View {
+        if let form = WorkoutStats.formSummary(from: workouts) {
+            VStack(alignment: .leading, spacing: 12) {
+                Text("Tempo & Form").font(.headline)
+                HStack {
+                    formStat(value: String(format: "%.1fs", form.avgCadence), label: "Avg rep")
+                    formStat(value: String(format: "%.0fs", form.avgTimeUnderTension), label: "TUT / set")
+                    if let fatigue = form.fatigueRatio {
+                        formStat(value: String(format: "%.2f×", fatigue), label: "Fatigue")
+                    }
+                }
+                HStack {
+                    if let rc = form.repConsistency {
+                        formStat(value: "\(Int(rc * 100))%", label: "Rep consistency")
+                    }
+                    if let cc = form.cadenceConsistency {
+                        formStat(value: "\(Int(cc * 100))%", label: "Tempo consistency")
+                    }
+                }
+                Text("Tempo here is average rep time and within-set fatigue. Concentric/eccentric split needs the pin's high-rate connected stream.")
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .card()
+        }
+    }
+
+    private func formStat(value: String, label: String) -> some View {
+        VStack(spacing: 4) {
+            Text(value).font(.title3.bold()).foregroundStyle(Theme.accent)
+                .lineLimit(1).minimumScaleFactor(0.6)
+            Text(label).font(.caption2).foregroundStyle(.secondary)
+                .multilineTextAlignment(.center)
+        }
+        .frame(maxWidth: .infinity)
     }
 
     @ViewBuilder
