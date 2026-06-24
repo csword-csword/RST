@@ -48,6 +48,8 @@ struct HistoryView: View {
 struct WorkoutDetailView: View {
     let workout: Workout
     let unit: WeightUnit
+    @Environment(\.subscriptions) private var subscriptions
+    @State private var showPaywall = false
 
     var body: some View {
         ScrollView {
@@ -63,6 +65,7 @@ struct WorkoutDetailView: View {
         .background(Theme.background)
         .navigationTitle(workout.startedAt.formatted(date: .abbreviated, time: .omitted))
         .navigationBarTitleDisplayMode(.inline)
+        .sheet(isPresented: $showPaywall) { PaywallView() }
     }
 
     private var header: some View {
@@ -110,20 +113,54 @@ struct WorkoutDetailView: View {
                     .foregroundStyle(Theme.accent)
             }
             ForEach(Array(entry.sortedSets.enumerated()), id: \.element.persistentModelID) { index, set in
-                HStack {
-                    Text("Set \(index + 1)")
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
-                    Spacer()
-                    Text("\(set.reps) reps")
-                        .font(.subheadline.bold())
-                    Text("@ \(formatWeight(set.weight, unit: unit))")
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
+                VStack(spacing: 2) {
+                    HStack {
+                        Text("Set \(index + 1)")
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+                        Spacer()
+                        Text("\(set.reps) reps")
+                            .font(.subheadline.bold())
+                        Text("@ \(formatWeight(set.weight, unit: unit))")
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+                    }
+                    if subscriptions.isSubscribed, let line = tempoLine(for: set) {
+                        HStack {
+                            Text(line).font(.caption).foregroundStyle(.secondary)
+                            Spacer()
+                        }
+                    }
                 }
+            }
+
+            if !subscriptions.isSubscribed {
+                Button {
+                    showPaywall = true
+                } label: {
+                    HStack(spacing: 6) {
+                        Image(systemName: "waveform.path.ecg")
+                        Text("Per-set tempo & cadence").font(.caption)
+                        Spacer()
+                        ProBadge()
+                    }
+                    .foregroundStyle(.secondary)
+                }
+                .padding(.top, 2)
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .card()
+    }
+
+    private func tempoLine(for set: SetRecord) -> String? {
+        var parts: [String] = []
+        if let cadence = WorkoutStats.cadence(set) {
+            parts.append(String(format: "%.1fs/rep", cadence))
+        }
+        if let tut = WorkoutStats.timeUnderTension(set) {
+            parts.append(String(format: "%.0fs TUT", tut))
+        }
+        return parts.isEmpty ? nil : parts.joined(separator: " · ")
     }
 }

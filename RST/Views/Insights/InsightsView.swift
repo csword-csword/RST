@@ -12,6 +12,8 @@ struct InsightsView: View {
     private var workouts: [Workout]
 
     @State private var selectedMachineID: String?
+    @State private var selectedStrengthDate: Date?
+    @State private var selectedVolumeDate: Date?
 
     private var unit: WeightUnit { WeightUnit(rawValue: weightUnitRaw) ?? .lb }
     private var prs: [MachinePR] { WorkoutStats.personalRecords(from: workouts) }
@@ -22,6 +24,18 @@ struct InsightsView: View {
     private var strengthSeries: [StrengthPoint] {
         guard let id = selectedMachineID else { return [] }
         return WorkoutStats.oneRepMaxSeries(for: id, from: workouts)
+    }
+    private var selectedStrengthPoint: StrengthPoint? {
+        guard let date = selectedStrengthDate else { return nil }
+        return strengthSeries.min {
+            abs($0.date.timeIntervalSince(date)) < abs($1.date.timeIntervalSince(date))
+        }
+    }
+    private var selectedWeek: WeekVolume? {
+        guard let date = selectedVolumeDate else { return nil }
+        return weekly.min {
+            abs($0.weekStart.timeIntervalSince(date)) < abs($1.weekStart.timeIntervalSince(date))
+        }
     }
 
     var body: some View {
@@ -67,16 +81,29 @@ struct InsightsView: View {
                 .font(.caption).foregroundStyle(.secondary)
 
             if strengthSeries.count >= 2 {
-                Chart(strengthSeries) { point in
-                    LineMark(x: .value("Date", point.date),
-                             y: .value("1RM", point.oneRepMax))
-                        .foregroundStyle(Theme.accent)
-                        .interpolationMethod(.catmullRom)
-                    PointMark(x: .value("Date", point.date),
-                              y: .value("1RM", point.oneRepMax))
-                        .foregroundStyle(Theme.accent)
+                Chart {
+                    ForEach(strengthSeries) { point in
+                        LineMark(x: .value("Date", point.date),
+                                 y: .value("1RM", point.oneRepMax))
+                            .foregroundStyle(Theme.accent)
+                            .interpolationMethod(.catmullRom)
+                        PointMark(x: .value("Date", point.date),
+                                  y: .value("1RM", point.oneRepMax))
+                            .foregroundStyle(Theme.accent)
+                    }
+                    if let sel = selectedStrengthPoint {
+                        RuleMark(x: .value("Date", sel.date))
+                            .foregroundStyle(.secondary.opacity(0.4))
+                            .annotation(position: .top, overflowResolution: .init(x: .fit(to: .chart), y: .automatic)) {
+                                valueBadge(formatWeight(sel.oneRepMax, unit: unit), sel.date)
+                            }
+                        PointMark(x: .value("Date", sel.date), y: .value("1RM", sel.oneRepMax))
+                            .foregroundStyle(Theme.accent)
+                            .symbolSize(180)
+                    }
                 }
                 .chartYScale(domain: .automatic(includesZero: false))
+                .chartXSelection(value: $selectedStrengthDate)
                 .frame(height: 180)
             } else {
                 Text("Log this machine in at least two workouts to see a trend.")
@@ -98,7 +125,8 @@ struct InsightsView: View {
                 ForEach(weekly) { week in
                     BarMark(x: .value("Week", week.weekStart, unit: .weekOfYear),
                             y: .value("Volume", week.volume))
-                        .foregroundStyle(Theme.accent)
+                        .foregroundStyle(selectedWeek == nil || selectedWeek?.id == week.id
+                                         ? Theme.accent : Theme.accent.opacity(0.35))
                         .cornerRadius(4)
                 }
                 if avg > 0 {
@@ -109,6 +137,13 @@ struct InsightsView: View {
                             Text("avg").font(.caption2).foregroundStyle(.secondary)
                         }
                 }
+                if let sel = selectedWeek {
+                    RuleMark(x: .value("Week", sel.weekStart, unit: .weekOfYear))
+                        .foregroundStyle(.clear)
+                        .annotation(position: .top, overflowResolution: .init(x: .fit(to: .chart), y: .automatic)) {
+                            valueBadge(formatWeight(sel.volume, unit: unit), sel.weekStart)
+                        }
+                }
             }
             .chartXAxis {
                 AxisMarks(values: .stride(by: .weekOfYear)) { _ in
@@ -116,10 +151,22 @@ struct InsightsView: View {
                     AxisValueLabel(format: .dateTime.month(.abbreviated).day())
                 }
             }
+            .chartXSelection(value: $selectedVolumeDate)
             .frame(height: 180)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .card()
+    }
+
+    private func valueBadge(_ value: String, _ date: Date) -> some View {
+        VStack(spacing: 1) {
+            Text(value).font(.caption.bold()).foregroundStyle(.primary)
+            Text(date, format: .dateTime.month(.abbreviated).day())
+                .font(.caption2).foregroundStyle(.secondary)
+        }
+        .padding(.horizontal, 8).padding(.vertical, 4)
+        .background(Theme.card, in: RoundedRectangle(cornerRadius: 8))
+        .overlay(RoundedRectangle(cornerRadius: 8).strokeBorder(Theme.accent.opacity(0.4), lineWidth: 1))
     }
 
     // MARK: - Tempo & form
