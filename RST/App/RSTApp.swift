@@ -10,18 +10,27 @@ struct RSTApp: App {
     @State private var catalogStore = EquipmentCatalogStore()
     @State private var locationService = LocationService()
     @State private var pinDevice: any PinDeviceService
+    @State private var pinController: any PinControlling
 
     init() {
         _pinDevice = State(initialValue: Self.makePinDevice())
+        _pinController = State(initialValue: Self.makePinController())
+    }
+
+    private static func useSimulatedPin() -> Bool {
+        #if targetEnvironment(simulator)
+        return true
+        #else
+        return UserDefaults.standard.object(forKey: "useSimulatedPin") as? Bool ?? false
+        #endif
     }
 
     private static func makePinDevice() -> any PinDeviceService {
-        #if targetEnvironment(simulator)
-        return MockPinDevice()
-        #else
-        let simulated = UserDefaults.standard.object(forKey: "useSimulatedPin") as? Bool ?? false
-        return simulated ? MockPinDevice() : MokoPinDevice()
-        #endif
+        useSimulatedPin() ? MockPinDevice() : MokoPinDevice()
+    }
+
+    private static func makePinController() -> any PinControlling {
+        useSimulatedPin() ? MockPinController() : MokoPinController()
     }
 
     var body: some Scene {
@@ -30,6 +39,7 @@ struct RSTApp: App {
                 .environment(\.catalogStore, catalogStore)
                 .environment(\.locationService, locationService)
                 .environment(\.pinDevice, pinDevice)
+                .environment(\.pinController, pinController)
                 .environment(\.equipmentClassifier, MockEquipmentClassifier())
                 .environment(\.stackReader, MockWeightStackReader())
         }

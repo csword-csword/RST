@@ -84,6 +84,50 @@ a set in the app.
    pin to simulate reps and confirm the counter advances; stop for ~4 s and the
    set should end.
 
+## Connected-mode setup (Settings → Pin Setup)
+
+Rep tracking only needs *scanning*. Three setup tasks need an authenticated
+*connection*: first-time connect, changing the connection password, and resetting
+the battery gauge after a battery swap. These live in **Settings → Connect &
+Configure Pin** (`PinSetupView`), backed by the `PinControlling` protocol:
+
+- `MockPinController` — drives the full UX in the simulator / demos (and accepts
+  the default password `Moko4321`).
+- `MokoPinController` — real CoreBluetooth: it **connects and discovers the GATT
+  table for real today** (the discovered characteristics are listed on screen),
+  but the authenticated **write commands are gated** on the MOKO command protocol.
+
+### What's needed to finish the write commands
+
+The advertisement layout was fully documented in the manual, but the *connected*
+command protocol (config service + characteristic UUIDs and the command frames
+for auth / change-password / battery-reset) is MOKO-proprietary and lives in the
+**"Data Format" doc** (the `docs.qq.com` link, which requires login) and the
+`MKBXPSeriesSlathf` SDK source (CocoaPods-hosted, not in the public GitHub tree).
+
+Fill these into **one place** — `MokoControlProtocol` in
+`RST/Services/PinControlling.swift`:
+
+```swift
+static let configServiceUUID: CBUUID?      = CBUUID(string: "????")
+static let writeCharacteristicUUID: CBUUID? = CBUUID(string: "????")
+static let notifyCharacteristicUUID: CBUUID? = CBUUID(string: "????")
+static func authCommand(password:) -> Data?         // frame bytes
+static func changePasswordCommand(new:) -> Data?    // frame bytes
+static func resetBatteryCommand() -> Data?          // frame bytes
+```
+
+Once `isConfigured` is true, the controller authenticates on connect and the
+password/battery buttons send the real commands. Until then it connects, shows
+the discovered characteristics (so you can identify the right UUIDs against the
+spec), and the write buttons surface a clear "protocol not configured" message
+rather than sending incorrect bytes to the device.
+
+**To unblock this quickly:** paste the relevant rows of the Data Format doc
+(connected-mode command IDs and byte layouts), and I'll fill in
+`MokoControlProtocol`. Alternatively, integrate the MOKO SDK (below), which
+already implements these commands.
+
 ## Future: in-app configuration via the MOKO SDK
 
 To configure the sensor from inside RST (instead of the MOKO app), integrate

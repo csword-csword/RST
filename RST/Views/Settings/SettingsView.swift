@@ -54,6 +54,16 @@ struct SettingsView: View {
                 }
 
                 Section {
+                    NavigationLink {
+                        PinSetupView()
+                    } label: {
+                        Label("Connect & Configure Pin", systemImage: "antenna.radiowaves.left.and.right")
+                    }
+                } footer: {
+                    Text("Connect to the pin to change its password or reset the battery gauge after a swap.")
+                }
+
+                Section {
                     Toggle("Use simulated pin", isOn: $useSimulatedPin)
                 } footer: {
                     Text("Run with a simulated pin instead of real Bluetooth hardware — useful for demos. Relaunch the app to apply.")

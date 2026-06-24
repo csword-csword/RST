@@ -7,6 +7,7 @@ extension EnvironmentValues {
     @Entry var equipmentClassifier: any EquipmentClassifying = MockEquipmentClassifier()
     @Entry var stackReader: any WeightStackReading = MockWeightStackReader()
     @Entry var pinDevice: any PinDeviceService = MockPinDevice()
+    @Entry var pinController: any PinControlling = MockPinController()
     @Entry var catalogStore = EquipmentCatalogStore()
     @Entry var locationService = LocationService()
 }
