@@ -11,9 +11,27 @@ instead of resented. Features below are tagged with that in mind.
 Effort: **S** = days · **M** = a week or two · **L** = multi-week / needs backend.
 Recurring fit: ★ (nice) → ★★★ (strongly justifies an annual fee).
 
-## Already shipped as the first Pro feature
-- **CSV export** of full history (Settings → Your Data). Additive, real, gates the
-  paywall today so you can test the whole flow.
+## Already shipped
+- **CSV export** of full history (Settings → Your Data) — Pro.
+- **Insights** (Home → Insights) — Pro: personal records, estimated 1RM, weekly
+  volume chart, and volume-by-muscle-group (`WorkoutStats` + Swift Charts).
+- **Rest timer** between sets (countdown, +15s, skip; default in Settings) — **free**.
+- **Voice coach** — Pro: speaks rep counts and "time for your next set," ducking
+  your music (`VoiceCoach`, AVSpeechSynthesizer). Toggle in Settings.
+
+### Rep-quality insights — feasibility (important)
+What's computable depends on the **data path**:
+- **Advertisement broadcast (current, ≤10 Hz):** reliable for rep count, set
+  detection, rest timing, set cadence, and *rough* tempo / time-under-tension
+  (±0.1–0.2 s). Good enough for coaching cues and consistency feedback.
+- **NOT reliable from 10 Hz:** true velocity-based-training metrics (mean
+  concentric velocity in m/s), range of motion, or power — these need
+  double-integration of a high-rate, calibrated stream.
+- **To unlock premium rep-quality (velocity/ROM/power):** use the M1Pro's
+  **connected high-rate accelerometer** mode (stream or flash-log at 50–100 Hz),
+  which requires the connected protocol (already requested) and confirming the
+  sensor's max output data rate. Recommend shipping the coarse metrics now and
+  gating VBT-style metrics on that confirmation.
 
 ## A. Data, backup & sync — ★★★ (strongest recurring justification)
 | Feature | What it is | Recurring fit | Effort |

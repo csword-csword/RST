@@ -10,6 +10,8 @@ struct SettingsView: View {
     @AppStorage("gymProfileID") private var gymProfileID = "standard"
     @AppStorage("weightUnit") private var weightUnitRaw = WeightUnit.lb.rawValue
     @AppStorage("useSimulatedPin") private var useSimulatedPin = false
+    @AppStorage("defaultRestSeconds") private var defaultRestSeconds = 90
+    @AppStorage("voiceCoachEnabled") private var voiceCoachEnabled = false
     @State private var sheet: SettingsSheet?
 
     private var unit: WeightUnit { WeightUnit(rawValue: weightUnitRaw) ?? .lb }
@@ -50,6 +52,8 @@ struct SettingsView: View {
                     }
                     .pickerStyle(.segmented)
                 }
+
+                workoutSection
 
                 Section {
                     LabeledContent("Status") {
@@ -111,6 +115,33 @@ struct SettingsView: View {
             case .paywall: PaywallView()
             case .export(let url): ActivityView(items: [url])
             }
+        }
+    }
+
+    @ViewBuilder
+    private var workoutSection: some View {
+        Section {
+            Picker("Rest timer", selection: $defaultRestSeconds) {
+                ForEach([60, 75, 90, 120, 150, 180], id: \.self) { secs in
+                    Text("\(secs / 60):\(String(format: "%02d", secs % 60))").tag(secs)
+                }
+            }
+
+            if subscriptions.isSubscribed {
+                Toggle("Voice coach", isOn: $voiceCoachEnabled)
+            } else {
+                Button { sheet = .paywall } label: {
+                    HStack {
+                        Text("Voice coach").foregroundStyle(.primary)
+                        Spacer()
+                        ProBadge()
+                    }
+                }
+            }
+        } header: {
+            Text("Workout")
+        } footer: {
+            Text("Rest timer counts down between sets. The voice coach (Pro) calls out reps and tells you when to start your next set — great with headphones.")
         }
     }
 

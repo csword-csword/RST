@@ -9,11 +9,13 @@ struct WorkoutLaunch: Identifiable {
 struct HomeView: View {
     @Environment(\.catalogStore) private var catalogStore
     @Environment(\.locationService) private var locationService
+    @Environment(\.subscriptions) private var subscriptions
     @AppStorage("gymProfileID") private var gymProfileID = "standard"
     @AppStorage("weightUnit") private var weightUnitRaw = WeightUnit.lb.rawValue
     @Query(sort: \Workout.startedAt, order: .reverse) private var workouts: [Workout]
     @Query(sort: \WorkoutTemplate.createdAt, order: .reverse) private var templates: [WorkoutTemplate]
     @State private var launch: WorkoutLaunch?
+    @State private var showPaywall = false
 
     private var unit: WeightUnit { WeightUnit(rawValue: weightUnitRaw) ?? .lb }
 
@@ -28,6 +30,7 @@ struct HomeView: View {
                     }
                     weekCard
                     if !workouts.isEmpty {
+                        insightsCard
                         recentSection
                     }
                 }
@@ -36,11 +39,49 @@ struct HomeView: View {
             }
             .background(Theme.background)
             .navigationTitle("Pinpoint")
+            .navigationDestination(for: String.self) { _ in InsightsView() }
         }
         .onAppear { locationService.requestLocation() }
         .fullScreenCover(item: $launch) { launch in
             WorkoutFlowView(template: launch.template)
         }
+        .sheet(isPresented: $showPaywall) { PaywallView() }
+    }
+
+    @ViewBuilder
+    private var insightsCard: some View {
+        if subscriptions.isSubscribed {
+            NavigationLink(value: "insights") {
+                insightsLabel
+            }
+            .buttonStyle(.plain)
+        } else {
+            Button { showPaywall = true } label: {
+                insightsLabel
+            }
+            .buttonStyle(.plain)
+        }
+    }
+
+    private var insightsLabel: some View {
+        HStack(spacing: 12) {
+            Image(systemName: "chart.line.uptrend.xyaxis")
+                .font(.title3)
+                .foregroundStyle(Theme.accent)
+            VStack(alignment: .leading, spacing: 2) {
+                Text("Insights").font(.headline)
+                Text("Records, trends, and muscle balance")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+            Spacer()
+            if subscriptions.isSubscribed {
+                Image(systemName: "chevron.right").font(.caption).foregroundStyle(.secondary)
+            } else {
+                ProBadge()
+            }
+        }
+        .card()
     }
 
     private var gymCard: some View {

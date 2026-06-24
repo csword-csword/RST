@@ -1,19 +1,29 @@
 import SwiftUI
+import UIKit
 
-/// Step 4: live set/rep tracking driven by the smart pin's accelerometer
-/// (simulated by `MockPinDevice` until the hardware API is ready).
+/// Step 4: live set/rep tracking driven by the smart pin's accelerometer,
+/// with a between-sets rest timer and an optional (Pro) voice coach.
 struct ActiveSetView: View {
     @Environment(\.pinDevice) private var pin
+    @Environment(\.subscriptions) private var subscriptions
     let entry: ExerciseEntry
     let machine: Machine
     let planned: TemplateExercise?
     let unit: WeightUnit
     var onFinishExercise: () -> Void
 
+    @AppStorage("defaultRestSeconds") private var defaultRestSeconds = 90
+    @AppStorage("voiceCoachEnabled") private var voiceCoachEnabled = false
+
     @State private var setStartedAt: Date?
     @State private var restStartedAt: Date?
+    @State private var restRemaining = 0
+    @State private var restDone = false
+    @State private var voice = VoiceCoach()
 
+    private let ticker = Timer.publish(every: 1, on: .main, in: .common).autoconnect()
     private var targetReps: Int { planned?.targetReps ?? 10 }
+    private var voiceActive: Bool { subscriptions.isSubscribed && voiceCoachEnabled }
 
     var body: some View {
         VStack(spacing: 20) {
@@ -55,11 +65,22 @@ struct ActiveSetView: View {
         .padding()
         .background(Theme.background)
         .task { await pin.connect() }
+        .onAppear {
+            voice.enabled = voiceActive
+            if voiceActive { voice.configureAudioSession() }
+        }
+        .onDisappear { voice.stop() }
         .onChange(of: pin.phase) { oldPhase, newPhase in
             if oldPhase == .lifting && newPhase == .resting {
                 logSet()
             }
         }
+        .onChange(of: pin.repCount) { oldCount, newCount in
+            if pin.phase == .lifting, voiceActive, newCount > oldCount, newCount > 0 {
+                voice.rep(newCount)
+            }
+        }
+        .onReceive(ticker) { _ in tickRest() }
     }
 
     @ViewBuilder
@@ -99,23 +120,51 @@ struct ActiveSetView: View {
     }
 
     private var restingContent: some View {
-        VStack(spacing: 12) {
-            Image(systemName: "checkmark.circle.fill")
-                .font(.system(size: 56))
-                .foregroundStyle(Theme.accent)
-            Text("Set complete")
+        VStack(spacing: 14) {
+            Image(systemName: restDone ? "bolt.fill" : "pause.circle.fill")
+                .font(.system(size: 52))
+                .foregroundStyle(restDone ? AnyShapeStyle(Theme.accentGradient) : AnyShapeStyle(Theme.accent))
+            Text(restDone ? "Ready for your next set" : "Rest")
                 .font(.title2.bold())
-            if let restStartedAt {
-                HStack(spacing: 6) {
-                    Text("Resting")
-                        .foregroundStyle(.secondary)
-                    Text(restStartedAt, style: .timer)
-                        .monospacedDigit()
-                        .foregroundStyle(Theme.accent)
+
+            if !restDone {
+                Text(timeString(restRemaining))
+                    .font(.system(size: 48, weight: .heavy, design: .rounded))
+                    .monospacedDigit()
+                    .foregroundStyle(Theme.accent)
+                    .contentTransition(.numericText())
+                    .animation(.snappy, value: restRemaining)
+                HStack(spacing: 12) {
+                    Button("+15s") { restRemaining += 15 }
+                        .buttonStyle(.bordered)
+                        .tint(Theme.accent)
+                    Button("Skip Rest") { finishRest() }
+                        .buttonStyle(.bordered)
+                        .tint(.secondary)
                 }
-                .font(.headline)
             }
         }
+    }
+
+    private func timeString(_ seconds: Int) -> String {
+        String(format: "%d:%02d", seconds / 60, seconds % 60)
+    }
+
+    private func tickRest() {
+        guard pin.phase == .resting, !entry.sets.isEmpty, !restDone, restRemaining > 0 else { return }
+        restRemaining -= 1
+        if voiceActive, (1...3).contains(restRemaining) {
+            voice.restCountdown(restRemaining)
+        }
+        if restRemaining == 0 { finishRest() }
+    }
+
+    private func finishRest() {
+        restRemaining = 0
+        guard !restDone else { return }
+        restDone = true
+        UINotificationFeedbackGenerator().notificationOccurred(.success)
+        if voiceActive { voice.nextSet() }
     }
 
     private func repRing(count: Int) -> some View {
@@ -195,6 +244,8 @@ struct ActiveSetView: View {
     private func startSet() {
         setStartedAt = .now
         restStartedAt = nil
+        restDone = false
+        restRemaining = 0
         pin.beginSet()
     }
 
@@ -205,5 +256,10 @@ struct ActiveSetView: View {
                                weight: entry.weight,
                                startedAt: setStartedAt ?? .now)
         entry.sets.append(record)
+
+        // Begin the rest timer for the next set.
+        restRemaining = max(defaultRestSeconds, 0)
+        restDone = restRemaining == 0
+        if voiceActive { voice.setComplete(reps: record.reps) }
     }
 }
