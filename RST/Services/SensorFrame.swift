@@ -7,21 +7,24 @@ import Foundation
 /// us the bytes *after* the UUID via `CBAdvertisementDataServiceDataKey`, so the
 /// payload begins at the frame-type byte:
 ///
+/// Multi-byte fields are **big-endian** (MSB first), per the MOKO data-format
+/// spec (e.g. temperature `0x00C8` → 200 → 20.0 °C; accel X `0x0028` → 40 mg).
+///
 /// ```
 /// [0]      Frame type (0x80 = Sensor info)
 /// [1]      Sensor status bitfield
-/// [2..3]   MAGNET_CNT      (UInt16 LE)
-/// [4..5]   MOTION_CNT      (UInt16 LE) — increments each motion-trigger event
-/// [6..7]   Accel X (mg)    (Int16  LE, signed)
-/// [8..9]   Accel Y (mg)    (Int16  LE, signed)
-/// [10..11] Accel Z (mg)    (Int16  LE, signed)
-/// [12..13] Temperature     (Int16  LE, 0.1 °C/digit)   — optional
-/// [14..15] Humidity        (UInt16 LE, 0.1 %RH/digit)  — optional
-/// [16..17] Battery         (UInt16 LE: >100 = mV, else %)
-/// [18..23] Tag ID (6 bytes)
+/// [2..3]   Hall trigger count   (UInt16 BE)
+/// [4..5]   Motion trigger count (UInt16 BE) — +1 per motion-trigger cycle
+/// [6..7]   Accel X (mg)         (Int16  BE, signed)
+/// [8..9]   Accel Y (mg)         (Int16  BE, signed)
+/// [10..11] Accel Z (mg)         (Int16  BE, signed)
+/// [12..13] Temperature          (Int16  BE, 0.1 °C/digit)   — optional
+/// [14..15] Humidity             (UInt16 BE, 0.1 %RH/digit)  — optional
+/// [16..17] Battery              (UInt16 BE: >100 = mV, else %)
+/// [18..23] Tag ID (up to 6 bytes)
 /// ```
 ///
-/// Source: MK Sensor Series APP User Manual, "Customized frame – Sensor info".
+/// Source: MOKO MK Sensor "Customized – Sensor info" advertisement data format.
 struct PinSensorFrame: Equatable {
     static let frameType: UInt8 = 0x80
 
@@ -49,7 +52,8 @@ struct PinSensorFrame: Equatable {
         // Need at least through the accelerometer triplet.
         guard b.count >= 12, b[0] == Self.frameType else { return nil }
 
-        func u16(_ i: Int) -> Int { Int(b[i]) | (Int(b[i + 1]) << 8) }
+        // Big-endian: the first byte is the most significant.
+        func u16(_ i: Int) -> Int { (Int(b[i]) << 8) | Int(b[i + 1]) }
         func s16(_ i: Int) -> Int { Int(Int16(bitPattern: UInt16(u16(i)))) }
 
         let status = b[1]

@@ -99,10 +99,12 @@ Configure Pin** (`PinSetupView`), backed by the `PinControlling` protocol:
 
 ### What's needed to finish the write commands
 
-The advertisement layout was fully documented in the manual, but the *connected*
-command protocol (config service + characteristic UUIDs and the command frames
-for auth / change-password / battery-reset) is MOKO-proprietary and lives in the
-**"Data Format" doc** (the `docs.qq.com` link, which requires login) and the
+The MOKO data-format spec we have documents the **advertisement** frames only
+(Sensor info, Eddystone UID/URL/TLM, iBeacon, T&H) — that's confirmed and the
+parser matches it (big-endian multi-byte fields). The *connected* command
+protocol — the config **GATT service + characteristic UUIDs** and the command
+frames for **auth / change-password / battery-reset** — is a **separate spec**
+that we don't have yet. It lives in MOKO's connected-mode protocol doc and the
 `MKBXPSeriesSlathf` SDK source (CocoaPods-hosted, not in the public GitHub tree).
 
 Fill these into **one place** — `MokoControlProtocol` in
@@ -123,10 +125,12 @@ the discovered characteristics (so you can identify the right UUIDs against the
 spec), and the write buttons surface a clear "protocol not configured" message
 rather than sending incorrect bytes to the device.
 
-**To unblock this quickly:** paste the relevant rows of the Data Format doc
-(connected-mode command IDs and byte layouts), and I'll fill in
-`MokoControlProtocol`. Alternatively, integrate the MOKO SDK (below), which
-already implements these commands.
+**To unblock this quickly:** provide MOKO's **connected-mode** protocol — the
+GATT service/characteristic UUIDs and the command byte layouts for verifying the
+password, changing it, and resetting the battery (this is *not* the advertisement
+data-format spec; ask MOKO for the "connectable / configuration command" doc for
+the MK Sensor / BXP-S series). Then I'll fill in `MokoControlProtocol`.
+Alternatively, integrate the MOKO SDK (below), which already implements these.
 
 ## Future: in-app configuration via the MOKO SDK
 

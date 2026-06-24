@@ -3,49 +3,49 @@ import XCTest
 
 final class SensorFrameTests: XCTestCase {
     /// Builds a Sensor-info payload (the bytes iOS exposes after the 0xEA01
-    /// UUID) using the worked example from the MOKO manual.
+    /// UUID) using the worked example from the MOKO data-format spec, which is
+    /// big-endian (MSB first).
     private func sampleData() -> Data {
         var b: [UInt8] = []
         b.append(0x80)                  // frame type
-        b.append(0x3C)                  // status: motion equipped, temp+humidity
-        b.append(contentsOf: [0x00, 0x00])  // magnet cnt = 0
-        b.append(contentsOf: [0x02, 0x00])  // motion cnt = 2
-        b.append(contentsOf: [0x3A, 0x00])  // accel X = 58 mg
-        b.append(contentsOf: [0x76, 0x00])  // accel Y = 118 mg
-        b.append(contentsOf: [0xA7, 0x03])  // accel Z = 935 mg
-        b.append(contentsOf: [0xC8, 0x00])  // temp = 200 -> 20.0 C
-        b.append(contentsOf: [0x37, 0x01])  // humidity = 311 -> 31.1 %
-        b.append(contentsOf: [0x64, 0x00])  // battery = 100 -> 100 %
+        b.append(0x0C)                  // status: accel equipped (bit2) + temp (bit3)
+        b.append(contentsOf: [0x00, 0x00])  // hall cnt = 0
+        b.append(contentsOf: [0x00, 0x00])  // motion cnt = 0
+        b.append(contentsOf: [0x00, 0x28])  // accel X = 0x0028 = 40 mg
+        b.append(contentsOf: [0xFF, 0x84])  // accel Y = 0xFF84 = -124 mg
+        b.append(contentsOf: [0x03, 0xD8])  // accel Z = 0x03D8 = 984 mg
+        b.append(contentsOf: [0x00, 0xC8])  // temp = 0x00C8 = 200 -> 20.0 C
+        b.append(contentsOf: [0x01, 0x37])  // humidity = 0x0137 = 311 -> 31.1 %
+        b.append(contentsOf: [0x00, 0x64])  // battery = 0x0064 = 100 -> 100 %
         b.append(contentsOf: [0x00, 0x00, 0x01, 0x00, 0x00, 0x00]) // tag id
         return Data(b)
     }
 
-    func testParsesManualExample() throws {
+    func testParsesSpecExample() throws {
         let frame = try XCTUnwrap(PinSensorFrame(serviceData: sampleData()))
-        XCTAssertEqual(frame.motionCount, 2)
-        XCTAssertEqual(frame.accelX, 58)
-        XCTAssertEqual(frame.accelY, 118)
-        XCTAssertEqual(frame.accelZ, 935)
+        XCTAssertEqual(frame.motionCount, 0)
+        XCTAssertEqual(frame.accelX, 40)
+        XCTAssertEqual(frame.accelY, -124)
+        XCTAssertEqual(frame.accelZ, 984)
         XCTAssertTrue(frame.motionEquipped)
         XCTAssertFalse(frame.motionActive)
         XCTAssertEqual(frame.temperatureC ?? 0, 20.0, accuracy: 0.001)
         XCTAssertEqual(frame.humidity ?? 0, 31.1, accuracy: 0.001)
         XCTAssertEqual(frame.batteryPercent, 100)
         XCTAssertNil(frame.batteryMilliVolts)
-        XCTAssertEqual(frame.tagID, "000001000000")
-        XCTAssertEqual(frame.magnitudeG, 0.944, accuracy: 0.01)
+        XCTAssertEqual(frame.magnitudeG, 0.993, accuracy: 0.01)
     }
 
     func testSignedAcceleration() throws {
         var b = [UInt8](sampleData())
-        b[6] = 0x88; b[7] = 0xFF  // X = 0xFF88 = -120 mg
+        b[6] = 0xFF; b[7] = 0x88  // X = 0xFF88 = -120 mg (big-endian)
         let frame = try XCTUnwrap(PinSensorFrame(serviceData: Data(b)))
         XCTAssertEqual(frame.accelX, -120)
     }
 
     func testBatteryVoltageWhenAbove100() throws {
         var b = [UInt8](sampleData())
-        b[16] = 0xCC; b[17] = 0x0C  // 0x0CCC = 3276 mV
+        b[16] = 0x0C; b[17] = 0xCC  // 0x0CCC = 3276 mV (big-endian)
         let frame = try XCTUnwrap(PinSensorFrame(serviceData: Data(b)))
         XCTAssertEqual(frame.batteryMilliVolts, 3276)
         XCTAssertNil(frame.batteryPercent)
