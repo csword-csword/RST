@@ -1,6 +1,8 @@
 import SwiftUI
 
 struct RootView: View {
+    @Environment(\.pinDevice) private var pinDevice
+
     var body: some View {
         TabView {
             HomeView()
@@ -15,6 +17,8 @@ struct RootView: View {
         .tint(Theme.accent)
         .preferredColorScheme(.dark)
         .fontDesign(.rounded)
+        // Begin scanning for the smart pin as soon as the app launches.
+        .task { await pinDevice.connect() }
     }
 }
 

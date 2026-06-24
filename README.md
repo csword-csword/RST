@@ -4,7 +4,7 @@ iOS app for tracking workouts on weight-stack machines fitted with a **smart pin
 
 > Brand: **Pinpoint** (pinpoint.fitness). The repo, Xcode project, and code keep the original internal name **RST** for old time's sake.
 
-The device API isn't available yet, so **all hardware and ML integrations are stubbed behind protocols** with realistic mock implementations — the entire app flow is buildable and demoable today, and the real SDK drops into the same interfaces.
+The **smart pin is now wired to real hardware** — the MOKO M1Pro sensor, driven over CoreBluetooth (see [`SENSOR_SETUP.md`](SENSOR_SETUP.md)). The camera/ML steps (machine identification, stack reading) are still stubbed behind protocols with realistic mocks, and every integration lives behind a protocol so mocks and real implementations swap cleanly.
 
 ## The workout flow
 
@@ -12,7 +12,7 @@ Setting the weight is a physical action — you place the smart pin in the stack
 
 1. **Scan machine** — point the camera at the machine; a vision model identifies the equipment type (lat pulldown, chest press, …). *Stub: `MockEquipmentClassifier`.*
 2. **Read the stack** — point the camera at the weight stack; the app reads where the pin was placed and infers the loaded weight (with a correction stepper for misreads, and a mismatch warning when a template calls for a different weight). *Stub: `MockWeightStackReader`.*
-3. **Lift** — sets and reps are tracked live from the pin's accelerometer, with automatic set-end detection on rest. *Stub: `MockPinDevice` (simulates reps every 2–3.5 s and rest detection).*
+3. **Lift** — sets and reps are tracked live from the pin's accelerometer, with automatic set-end detection on rest. **Real:** `MokoPinDevice` scans the M1Pro's BLE advertisement and counts reps from its broadcast acceleration (`MockPinDevice` still drives the simulator and demos).
 
 Plus:
 
@@ -38,7 +38,7 @@ Build and run the `RST` scheme (iOS 17+). The app is fully usable in the simulat
 - `RST/Services/` defines the integration seams:
   - `EquipmentClassifying` — camera → machine type (future Core ML/Vision model)
   - `WeightStackReading` — camera → loaded weight (future vision + BLE confirmation)
-  - `PinDeviceService` — smart-pin connection, accelerometer rep stream, set detection (future CoreBluetooth + device SDK)
-- Mocks are injected in one place — `RSTApp.swift` — via SwiftUI environment keys (`ServiceEnvironment.swift`). Swap them for real implementations there.
+  - `PinDeviceService` — smart-pin connection, accelerometer rep stream, set detection. Real impl: `MokoPinDevice` (`SensorFrame` parser + `RepCounter` over CoreBluetooth); mock: `MockPinDevice`.
+- Implementations are chosen in one place — `RSTApp.swift` — and injected via SwiftUI environment keys (`ServiceEnvironment.swift`). The pin uses real hardware on device and the mock in the simulator / when "Use simulated pin" is on.
 - `RST/Models/WorkoutModels.swift` — SwiftData schema: `Workout → ExerciseEntry → SetRecord`, plus `WorkoutTemplate → TemplateExercise`.
 - Equipment catalogs are plain bundled JSON; add a new gym chain by dropping in another catalog file and listing it in `EquipmentCatalogStore`.

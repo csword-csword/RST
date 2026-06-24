@@ -13,15 +13,39 @@ enum SetPhase: Equatable {
     case resting
 }
 
-/// Abstraction over the smart-pin hardware: a Bluetooth beacon plus
-/// accelerometer that replaces the standard weight-stack pin. The real
-/// implementation will use CoreBluetooth and the device SDK; `MockPinDevice`
-/// simulates a realistic session so the live-workout UI is fully demoable.
+/// Live info about the connected pin, surfaced in Settings and during a set.
+struct PinDeviceInfo: Equatable {
+    var name: String
+    var tagID: String
+    var rssi: Int?
+    var batteryPercent: Int?
+    var batteryMilliVolts: Int?
+
+    var batteryDescription: String? {
+        if let pct = batteryPercent { return "\(pct)%" }
+        if let mv = batteryMilliVolts { return String(format: "%.2f V", Double(mv) / 1000.0) }
+        return nil
+    }
+}
+
+/// Abstraction over the smart-pin hardware: the MOKO M1Pro sensor (Bluetooth
+/// beacon + 3-axis accelerometer) that replaces the standard weight-stack pin.
+///
+/// Two implementations satisfy this protocol:
+/// - `MokoPinDevice` — real CoreBluetooth, parses the sensor's advertisement
+///   and counts reps from the broadcast acceleration. Used on device.
+/// - `MockPinDevice` — simulates a realistic session. Used in the simulator and
+///   for demos.
 @MainActor
 protocol PinDeviceService: AnyObject, Observable {
     var connectionState: PinConnectionState { get }
     var phase: SetPhase { get }
     var repCount: Int { get }
+    /// Latest connected pin's info, or nil when none is locked on.
+    var deviceInfo: PinDeviceInfo? { get }
+    /// Current dynamic-acceleration magnitude (g), for live UI feedback.
+    var liveAcceleration: Double { get }
+
     func connect() async
     func disconnect()
     func beginSet()
@@ -33,6 +57,8 @@ final class MockPinDevice: PinDeviceService {
     private(set) var connectionState: PinConnectionState = .disconnected
     private(set) var phase: SetPhase = .idle
     private(set) var repCount: Int = 0
+    private(set) var deviceInfo: PinDeviceInfo?
+    private(set) var liveAcceleration: Double = 0
 
     private let connectDelay: Double
     private let repInterval: ClosedRange<Double>
@@ -55,6 +81,11 @@ final class MockPinDevice: PinDeviceService {
         connectionState = .scanning
         try? await Task.sleep(for: .seconds(connectDelay))
         connectionState = .connected
+        deviceInfo = PinDeviceInfo(name: "Simulated Pin",
+                                   tagID: "000001",
+                                   rssi: -45,
+                                   batteryPercent: 87,
+                                   batteryMilliVolts: nil)
     }
 
     func disconnect() {
@@ -63,6 +94,8 @@ final class MockPinDevice: PinDeviceService {
         connectionState = .disconnected
         phase = .idle
         repCount = 0
+        liveAcceleration = 0
+        deviceInfo = nil
     }
 
     /// Starts streaming simulated accelerometer rep events: a rep every few
@@ -78,6 +111,11 @@ final class MockPinDevice: PinDeviceService {
                 try? await Task.sleep(for: .seconds(.random(in: self.repInterval)))
                 guard !Task.isCancelled, self.phase == .lifting else { return }
                 self.repCount += 1
+                self.liveAcceleration = .random(in: 0.4...0.8)
+                Task { [weak self] in
+                    try? await Task.sleep(for: .milliseconds(350))
+                    self?.liveAcceleration = 0
+                }
             }
             try? await Task.sleep(for: .seconds(self.restDelay))
             guard !Task.isCancelled, self.phase == .lifting else { return }
@@ -92,6 +130,7 @@ final class MockPinDevice: PinDeviceService {
         if phase == .lifting {
             phase = .resting
         }
+        liveAcceleration = 0
         return repCount
     }
 }
