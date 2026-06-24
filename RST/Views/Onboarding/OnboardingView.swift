@@ -21,9 +21,9 @@ struct OnboardingView: View {
         Page(icon: "antenna.radiowaves.left.and.right",
              title: "Connect your pin",
              body: "Pop the Pinpoint pin into any weight stack. The app finds it over Bluetooth and reads your weight, reps, and sets."),
-        Page(icon: "gift.fill",
-             title: "Try it free",
-             body: "Use Pinpoint free on one machine of your choice. Subscribe to Pinpoint Pro any time to unlock every machine.")
+        Page(icon: "checkmark.seal.fill",
+             title: "Free with your pin",
+             body: "Rep tracking, history, and workout building are free. Pinpoint Pro is optional — it adds data export, cloud backup, and deeper insights.")
     ]
 
     var body: some View {

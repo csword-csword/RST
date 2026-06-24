@@ -9,7 +9,6 @@ extension EnvironmentValues {
     @Entry var pinDevice: any PinDeviceService = MockPinDevice()
     @Entry var pinController: any PinControlling = MockPinController()
     @Entry var subscriptions = SubscriptionStore()
-    @Entry var trial = TrialStore()
     @Entry var catalogStore = EquipmentCatalogStore()
     @Entry var locationService = LocationService()
 }

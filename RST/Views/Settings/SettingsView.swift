@@ -1,3 +1,4 @@
+import SwiftData
 import SwiftUI
 
 struct SettingsView: View {
@@ -5,11 +6,24 @@ struct SettingsView: View {
     @Environment(\.locationService) private var locationService
     @Environment(\.pinDevice) private var pinDevice
     @Environment(\.subscriptions) private var subscriptions
-    @Environment(\.trial) private var trial
+    @Query(sort: \Workout.startedAt, order: .reverse) private var workouts: [Workout]
     @AppStorage("gymProfileID") private var gymProfileID = "standard"
     @AppStorage("weightUnit") private var weightUnitRaw = WeightUnit.lb.rawValue
     @AppStorage("useSimulatedPin") private var useSimulatedPin = false
-    @State private var showPaywall = false
+    @State private var sheet: SettingsSheet?
+
+    private var unit: WeightUnit { WeightUnit(rawValue: weightUnitRaw) ?? .lb }
+
+    private enum SettingsSheet: Identifiable {
+        case paywall
+        case export(URL)
+        var id: String {
+            switch self {
+            case .paywall: return "paywall"
+            case .export(let url): return url.absoluteString
+            }
+        }
+    }
 
     var body: some View {
         NavigationStack {
@@ -83,6 +97,8 @@ struct SettingsView: View {
                     Text("Used to record where each workout took place.")
                 }
 
+                proSection
+
                 Section("About") {
                     LabeledContent("Version", value: "0.1.0")
                 }
@@ -90,33 +106,61 @@ struct SettingsView: View {
             .navigationTitle("Settings")
         }
         .onAppear { locationService.requestLocation() }
-        .sheet(isPresented: $showPaywall) { PaywallView() }
+        .sheet(item: $sheet) { which in
+            switch which {
+            case .paywall: PaywallView()
+            case .export(let url): ActivityView(items: [url])
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var proSection: some View {
+        Section {
+            Button {
+                if subscriptions.isSubscribed {
+                    if let url = WorkoutExporter.writeTempFile(from: workouts, unit: unit) {
+                        sheet = .export(url)
+                    }
+                } else {
+                    sheet = .paywall
+                }
+            } label: {
+                HStack {
+                    Label("Export Workouts (CSV)", systemImage: "square.and.arrow.up")
+                    Spacer()
+                    if !subscriptions.isSubscribed { ProBadge() }
+                }
+            }
+            .disabled(workouts.isEmpty)
+        } header: {
+            Text("Your Data")
+        } footer: {
+            Text(subscriptions.isSubscribed
+                 ? "Export your full workout history as a spreadsheet."
+                 : "Exporting your history is a Pinpoint Pro feature.")
+        }
     }
 
     @ViewBuilder
     private var subscriptionSection: some View {
         Section {
-            LabeledContent("Status") {
+            LabeledContent("Plan") {
                 if subscriptions.isSubscribed {
                     Label("Pinpoint Pro", systemImage: "checkmark.seal.fill")
                         .foregroundStyle(Theme.accent)
-                } else if trial.trialMachineID != nil {
-                    Text("Free trial").foregroundStyle(Theme.warning)
                 } else {
-                    Text("Not subscribed").foregroundStyle(.secondary)
+                    Text("Free").foregroundStyle(.secondary)
                 }
             }
 
-            if !subscriptions.isSubscribed {
-                if let name = trial.trialMachineName {
-                    LabeledContent("Free machine", value: name)
-                    Button("Change free machine") { trial.reset() }
-                        .foregroundStyle(Theme.accent)
+            if subscriptions.isSubscribed {
+                if let url = URL(string: "https://apps.apple.com/account/subscriptions") {
+                    Link("Manage Subscription", destination: url)
                 }
-                Button("Subscribe to Pinpoint Pro") { showPaywall = true }
+            } else {
+                Button("Upgrade to Pinpoint Pro") { sheet = .paywall }
                     .foregroundStyle(Theme.accent)
-            } else if let url = URL(string: "https://apps.apple.com/account/subscriptions") {
-                Link("Manage Subscription", destination: url)
             }
 
             Button("Restore Purchases") {
@@ -128,7 +172,7 @@ struct SettingsView: View {
         } footer: {
             Text(subscriptions.isSubscribed
                  ? "Thanks for supporting Pinpoint. Manage or cancel anytime in your Apple Account."
-                 : "Pinpoint is free on one machine. Pinpoint Pro is \(subscriptions.priceText)/year and unlocks every machine.")
+                 : "Rep tracking and history are free with your pin. Pinpoint Pro (\(subscriptions.priceText)/year) adds extras like data export.")
         }
     }
 

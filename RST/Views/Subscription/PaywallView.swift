@@ -6,11 +6,13 @@ struct PaywallView: View {
     /// Optional context, e.g. the machine that triggered the paywall.
     var contextMessage: String?
 
+    // Rep tracking, history, builder, and gym profiles are FREE with the pin.
+    // Pro adds extras on top — update this list as Pro features ship.
     private let benefits = [
-        ("infinity", "Every machine", "Track unlimited machines at any gym."),
-        ("waveform.path.ecg", "Automatic reps & sets", "The smart pin counts for you — no tapping."),
-        ("chart.line.uptrend.xyaxis", "Full history & stats", "Volume, PRs, and progress over time."),
-        ("mappin.and.ellipse", "Gym-aware", "Planet Fitness, LA Fitness, and more.")
+        ("square.and.arrow.up", "Export your data", "Download your full history as a spreadsheet."),
+        ("icloud.fill", "Cloud backup & sync", "Your training, safe and on every device."),
+        ("chart.line.uptrend.xyaxis", "Advanced insights", "Trends, PRs, and progress analytics."),
+        ("sparkles", "New Pro features", "Get every Pro feature as we ship it.")
     ]
 
     var body: some View {
@@ -22,7 +24,7 @@ struct PaywallView: View {
                         .foregroundStyle(Theme.accentGradient)
                     Text("Pinpoint Pro")
                         .font(.largeTitle.bold())
-                    Text(contextMessage ?? "Unlock every machine and your full training history.")
+                    Text(contextMessage ?? "Rep tracking is free. Pinpoint Pro adds backup, insights, and export.")
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
                         .multilineTextAlignment(.center)

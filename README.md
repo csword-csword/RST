@@ -20,7 +20,7 @@ Plus:
 - **Gym profiles** — bundled equipment catalogs for a generic gym, **Planet Fitness**, and **LA Fitness**; detection and the builder are scoped to the active profile's machines (`RST/Resources/Catalogs/*.json`).
 - **History** — every workout stored with date, time, location, machines, and sets × reps × weight (SwiftData).
 - **Builder** — compose reusable workout templates from an equipment catalog and run them with planned sets/reps/weights pre-filled.
-- **Trial & subscription** — free on one machine of the user's choice; **Pinpoint Pro** ($49.99/year) unlocks every machine via Apple In-App Purchase (StoreKit 2). See [`SUBSCRIPTION.md`](SUBSCRIPTION.md).
+- **Free core + optional Pro** — tracking, history, and the builder are free with the pin; **Pinpoint Pro** ($49.99/year, Apple In-App Purchase) adds extras like CSV export. See [`SUBSCRIPTION.md`](SUBSCRIPTION.md) and the [`PRO_FEATURES.md`](PRO_FEATURES.md) menu.
 
 ## Getting started
 

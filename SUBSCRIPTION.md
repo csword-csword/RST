@@ -18,22 +18,17 @@ for the hardware. Keep the two flows separate: device = Stripe; app service = IA
 - One auto-renewable subscription: **Pinpoint Pro**, annual, **$49.99/year**.
 - Product ID: `fitness.pinpoint.annual` (`SubscriptionStore.annualProductID`).
 
-## Free trial: one machine
+## Model: free core + optional Pro
 
-Un-subscribed users get **full functionality on one machine of their choice**
-(`TrialStore`). The first machine they run becomes their free machine; any other
-machine shows the paywall. They can change their free machine in Settings.
+The **core app is free** with the pin — rep/set tracking, history, the workout
+builder, gym profiles, and location are never gated. **Pinpoint Pro** ($49.99/yr)
+adds value on top. This keeps the device fully useful out of the box (protecting
+App Store ratings) while still earning recurring revenue from power users.
 
-Access is decided in `TrialStore.access(machineID:isSubscribed:)`:
-
-| Situation | Result |
-|-----------|--------|
-| Subscribed | `.subscribed` — any machine |
-| No free machine claimed yet | `.trialAvailable` — claims this one |
-| Machine == claimed free machine | `.trialMachine` |
-| Different machine, not subscribed | `.locked` — paywall |
-
-Gating happens in `WorkoutFlowView.gate(_:)` right after a machine is identified.
+Gating is simply `subscriptions.isSubscribed`. A Pro-only action checks it and
+shows `PaywallView` if false — see the **CSV export** button in Settings
+(`SettingsView.proSection`) for the pattern. The candidate Pro features are in
+[`PRO_FEATURES.md`](PRO_FEATURES.md).
 
 ## Code map
 

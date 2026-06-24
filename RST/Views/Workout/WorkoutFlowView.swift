@@ -13,11 +13,6 @@ struct WorkoutFlowView: View {
         case betweenExercises
     }
 
-    enum FlowSheet: String, Identifiable {
-        case trial, paywall
-        var id: String { rawValue }
-    }
-
     let template: WorkoutTemplate?
 
     @Environment(\.modelContext) private var modelContext
@@ -25,8 +20,6 @@ struct WorkoutFlowView: View {
     @Environment(\.catalogStore) private var catalogStore
     @Environment(\.locationService) private var locationService
     @Environment(\.pinDevice) private var pinDevice
-    @Environment(\.subscriptions) private var subscriptions
-    @Environment(\.trial) private var trial
     @AppStorage("gymProfileID") private var gymProfileID = "standard"
     @AppStorage("weightUnit") private var weightUnitRaw = WeightUnit.lb.rawValue
 
@@ -36,9 +29,6 @@ struct WorkoutFlowView: View {
     @State private var currentEntry: ExerciseEntry?
     @State private var plannedIndex = 0
     @State private var showEndConfirm = false
-    @State private var pendingMachine: Machine?
-    @State private var activeSheet: FlowSheet?
-    @State private var pendingSubscribe = false
 
     private var unit: WeightUnit { WeightUnit(rawValue: weightUnitRaw) ?? .lb }
     private var catalog: EquipmentCatalog {
@@ -71,32 +61,6 @@ struct WorkoutFlowView: View {
             Button("Discard Workout", role: .destructive) { finishWorkout(save: false) }
             Button("Keep Lifting", role: .cancel) {}
         }
-        .sheet(item: $activeSheet, onDismiss: handleSheetDismiss) { sheet in
-            switch sheet {
-            case .trial:
-                TrialPromptView(machineName: pendingMachine?.name ?? "this machine") {
-                    if let picked = pendingMachine {
-                        trial.claim(machineID: picked.id, name: picked.name)
-                        proceed(with: picked)
-                    }
-                } onSubscribe: {
-                    pendingSubscribe = true
-                }
-            case .paywall:
-                PaywallView(contextMessage: pendingMachine.map { "Subscribe to track \($0.name) — and every other machine." })
-            }
-        }
-    }
-
-    private func handleSheetDismiss() {
-        if pendingSubscribe {
-            pendingSubscribe = false
-            activeSheet = .paywall
-            return
-        }
-        if subscriptions.isSubscribed, let picked = pendingMachine {
-            proceed(with: picked)
-        }
     }
 
     private var title: String {
@@ -113,7 +77,8 @@ struct WorkoutFlowView: View {
         switch step {
         case .machineScan:
             MachineScanView(candidates: catalog.machines, planned: plannedExercise) { picked in
-                gate(picked)
+                machine = picked
+                step = .stackScan
             }
         case .stackScan:
             if let machine {
@@ -242,27 +207,6 @@ struct WorkoutFlowView: View {
         } else {
             workout.gymName = catalog.name
         }
-    }
-
-    /// Enforces the one-machine free trial / subscription before a machine can
-    /// be used. Subscribed users pass straight through.
-    private func gate(_ picked: Machine) {
-        switch trial.access(machineID: picked.id, isSubscribed: subscriptions.isSubscribed) {
-        case .subscribed, .trialMachine:
-            proceed(with: picked)
-        case .trialAvailable:
-            pendingMachine = picked
-            activeSheet = .trial
-        case .locked:
-            pendingMachine = picked
-            activeSheet = .paywall
-        }
-    }
-
-    private func proceed(with picked: Machine) {
-        machine = picked
-        pendingMachine = nil
-        step = .stackScan
     }
 
     private func beginExercise(weight: Double) {
