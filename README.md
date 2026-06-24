@@ -10,7 +10,7 @@ The **smart pin is now wired to real hardware** — the MOKO M1Pro sensor, drive
 
 Setting the weight is a physical action — you place the smart pin in the stack at the machine. The app then:
 
-1. **Scan machine** — point the camera at the machine; a vision model identifies the equipment type (lat pulldown, chest press, …). *Stub: `MockEquipmentClassifier`.*
+1. **Scan machine** — point the camera at the machine's **name label**; on-device OCR (Vision) reads the text and matches it to a machine in the active gym's catalog (`EquipmentTextMatcher`). A mock classifier stands in on the simulator.
 2. **Read the stack** — point the camera at the weight stack; the app reads where the pin was placed and infers the loaded weight (with a correction stepper for misreads, and a mismatch warning when a template calls for a different weight). *Stub: `MockWeightStackReader`.*
 3. **Lift** — sets and reps are tracked live from the pin's accelerometer, with automatic set-end detection on rest. **Real:** `MokoPinDevice` scans the M1Pro's BLE advertisement and counts reps from its broadcast acceleration (`MockPinDevice` still drives the simulator and demos).
 
@@ -38,7 +38,7 @@ Build and run the `RST` scheme (iOS 17+). The app is fully usable in the simulat
 
 - **SwiftUI + SwiftData**, iOS 17+, Observation framework throughout.
 - `RST/Services/` defines the integration seams:
-  - `EquipmentClassifying` — camera → machine type (future Core ML/Vision model)
+  - Machine recognition — on-device OCR (`LabelScannerView`, Vision) reads the machine's label; `EquipmentTextMatcher` matches the text to the gym catalog. `EquipmentClassifying`/`MockEquipmentClassifier` is the simulator fallback. (A cloud vision-language model can be added later as a fallback for unlabeled machines; the BLE Tag ID can identify machines outright under the gym/B2B model.)
   - `WeightStackReading` — camera → loaded weight (future vision + BLE confirmation)
   - `PinDeviceService` — smart-pin connection, accelerometer rep stream, set detection. Real impl: `MokoPinDevice` (`SensorFrame` parser + `RepCounter` over CoreBluetooth); mock: `MockPinDevice`.
 - Implementations are chosen in one place — `RSTApp.swift` — and injected via SwiftUI environment keys (`ServiceEnvironment.swift`). The pin uses real hardware on device and the mock in the simulator / when "Use simulated pin" is on.

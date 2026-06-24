@@ -1,7 +1,8 @@
 import SwiftUI
 
-/// Step 2: point the camera at the machine; the (stubbed) vision model
-/// identifies what kind of equipment it is.
+/// Step 2: point the camera at the machine's name label; on-device OCR reads the
+/// text and matches it to a machine in the active gym's catalog. On the
+/// simulator (no camera), a mock classifier stands in so the flow is demoable.
 struct MachineScanView: View {
     @Environment(\.equipmentClassifier) private var classifier
     let candidates: [Machine]
@@ -9,14 +10,22 @@ struct MachineScanView: View {
     var onConfirm: (Machine) -> Void
 
     @State private var detection: EquipmentDetection?
-    @State private var isScanning = true
-    @State private var scanID = UUID()
+    @State private var fromLabel = false
     @State private var showManualPicker = false
 
     var body: some View {
         ZStack {
-            CameraPreview()
-                .ignoresSafeArea()
+            LabelScannerView { text in
+                if let match = EquipmentTextMatcher.bestMatch(in: text, candidates: candidates) {
+                    if detection?.machine.id != match.machine.id {
+                        withAnimation(.snappy) {
+                            detection = match
+                            fromLabel = true
+                        }
+                    }
+                }
+            }
+            .ignoresSafeArea()
 
             VStack {
                 if let planned, let plannedMachine = candidates.first(where: { $0.id == planned.machineID }) {
@@ -34,16 +43,13 @@ struct MachineScanView: View {
                 }
 
                 Spacer()
-
                 viewfinder
-
                 Spacer()
-
                 bottomPanel
             }
             .padding()
         }
-        .task(id: scanID) { await scan() }
+        .task { await simulatorFallback() }
         .sheet(isPresented: $showManualPicker) {
             MachinePickerView(machines: candidates) { machine in
                 onConfirm(machine)
@@ -52,21 +58,29 @@ struct MachineScanView: View {
     }
 
     private var viewfinder: some View {
-        RoundedRectangle(cornerRadius: 24)
-            .strokeBorder(isScanning ? Color.white.opacity(0.6) : Theme.accent, lineWidth: 3)
-            .frame(width: 260, height: 260)
-            .overlay {
-                if isScanning {
-                    VStack(spacing: 10) {
-                        ProgressView()
-                            .controlSize(.large)
-                        Text("Identifying machine…")
-                            .font(.subheadline)
-                            .foregroundStyle(.secondary)
+        VStack(spacing: 14) {
+            RoundedRectangle(cornerRadius: 20)
+                .strokeBorder(detection == nil ? Color.white.opacity(0.6) : Theme.accent, lineWidth: 3)
+                .frame(width: 280, height: 150)
+                .overlay {
+                    if detection == nil {
+                        VStack(spacing: 8) {
+                            Image(systemName: "text.viewfinder").font(.title)
+                            Text("Point at the machine's name label")
+                                .font(.subheadline.bold())
+                                .multilineTextAlignment(.center)
+                        }
+                        .foregroundStyle(.white.opacity(0.85))
+                        .padding(.horizontal)
                     }
                 }
+                .animation(.easeInOut, value: detection == nil)
+            if detection == nil {
+                Text("e.g. the placard that reads “LAT PULLDOWN”")
+                    .font(.caption)
+                    .foregroundStyle(.white.opacity(0.6))
             }
-            .animation(.easeInOut, value: isScanning)
+        }
     }
 
     @ViewBuilder
@@ -76,7 +90,9 @@ struct MachineScanView: View {
                 VStack(spacing: 4) {
                     Text(detection.machine.name)
                         .font(.title2.bold())
-                    Text("\(detection.machine.category) · \(Int(detection.confidence * 100))% confidence")
+                    Text(fromLabel
+                         ? "Read from label · \(detection.machine.category)"
+                         : "\(detection.machine.category) · \(Int(detection.confidence * 100))% confidence")
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
@@ -87,8 +103,10 @@ struct MachineScanView: View {
                     .buttonStyle(PrimaryButtonStyle())
 
                 HStack(spacing: 12) {
-                    Button("Rescan") { scanID = UUID() }
-                        .buttonStyle(SecondaryButtonStyle())
+                    Button("Rescan") {
+                        withAnimation { detection = nil; fromLabel = false }
+                    }
+                    .buttonStyle(SecondaryButtonStyle())
                     Button("Pick Manually") { showManualPicker = true }
                         .buttonStyle(SecondaryButtonStyle())
                 }
@@ -99,14 +117,15 @@ struct MachineScanView: View {
         }
     }
 
-    private func scan() async {
-        isScanning = true
-        detection = nil
+    /// On the simulator there's no camera/OCR, so synthesize a detection with the
+    /// mock classifier after a moment to keep the flow demoable. No-op on device.
+    private func simulatorFallback() async {
+        #if targetEnvironment(simulator)
+        try? await Task.sleep(for: .seconds(2))
+        guard detection == nil else { return }
         if let result = try? await classifier.classify(from: candidates) {
-            withAnimation(.snappy) {
-                detection = result
-                isScanning = false
-            }
+            withAnimation(.snappy) { detection = result; fromLabel = false }
         }
+        #endif
     }
 }

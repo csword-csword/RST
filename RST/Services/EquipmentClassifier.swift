@@ -9,10 +9,9 @@ enum EquipmentClassifierError: Error {
     case noCandidates
 }
 
-/// Abstraction over the on-device vision model that identifies what kind of
-/// machine the camera is pointed at. Replace `MockEquipmentClassifier` with a
-/// Core ML / Vision-backed implementation when the model is ready; candidates
-/// are constrained to the active gym profile's catalog.
+/// Fallback classifier used on the simulator (no camera). The real recognition
+/// path is on-device OCR of the machine's label — see `LabelScannerView` +
+/// `EquipmentTextMatcher`. Candidates are constrained to the active gym catalog.
 protocol EquipmentClassifying: Sendable {
     func classify(from candidates: [Machine]) async throws -> EquipmentDetection
 }
