@@ -56,15 +56,26 @@ oring          = true;  // O-ring groove on the lid plug for sweat resistance
 oring_cs       = 1.5;   // O-ring cross-section (e.g., 1.5mm)
 
 // ---- Lanyard attachment ------------------------------------------------------
-// Attaches to the BODY (never the removable lid) and sits near the front rim so
-// the puck hangs like a branded medallion with the LED/engraved face outward.
-// Use a real lanyard with a SPLIT RING + BREAKAWAY clasp (safety near equipment).
+// IMPORTANT: the steel pin dominates the center of mass, so on a lanyard the
+// puck hangs VERTICALLY with the pin straight down — the end face does NOT point
+// at viewers. The cylindrical SIDE is what shows, so brand/illuminate the side
+// (see brand band below). Attach to the BODY (never the removable lid). Use a
+// real lanyard with a SPLIT RING + BREAKAWAY clasp (safety near equipment).
 lanyard        = true;
 lanyard_ang    = 90;    // position around the rim (deg). 90 = "top"
 ear_proj       = 7.0;   // how far the loop boss sticks out past the rim
 ear_thick      = 8.0;   // boss thickness along the puck axis (>= hole + ~3)
 ear_hole       = 4.5;   // through-hole for a split ring
 ear_boss       = 9.0;   // outer boss diameter (leaves wall around the hole)
+
+// ---- Side brand band ---------------------------------------------------------
+// Shallow recess around the circumference for a pad-printed wordmark or a
+// translucent glow ring lit by the LED — the billboard that faces outward when
+// the puck hangs vertically from a lanyard.
+brand_band     = true;
+band_z         = body_len * 0.5;   // axial center of the band
+band_h         = 9.0;              // band height
+band_depth     = 0.6;              // recess depth
 
 // ---- Derived -----------------------------------------------------------------
 inner_dia  = max(sensor_dia, batt_dia) + 1.0;     // cavity diameter
@@ -119,6 +130,14 @@ module lanyard_ear_hole() {
             cylinder(d = ear_hole, h = ear_thick + 4, center = true);
 }
 
+module brand_band_groove() {
+    translate([0,0, band_z])
+        difference() {
+            cylinder(d = grip_dia + 1, h = band_h, center = true);
+            cylinder(d = grip_dia - 2*band_depth, h = band_h + 2, center = true);
+        }
+}
+
 module body() {
     difference() {
         union() {
@@ -126,6 +145,7 @@ module body() {
             if (lanyard) lanyard_ear_solid();
         }
         if (lanyard) lanyard_ear_hole();
+        if (brand_band) brand_band_groove();
         // front cavity (holds sensor + battery, and receives the lid)
         translate([0,0, body_len - cavity_len - lid_len + 0.01])
             cylinder(d=bore_dia, h=cavity_len + lid_len);
