@@ -7,21 +7,21 @@ import Vision
 /// machine from the text printed on its label/placard. Renders a placeholder on
 /// the simulator (no camera) so the flow stays usable.
 struct LabelScannerView: UIViewControllerRepresentable {
-    var onText: ([String]) -> Void
+    var onLines: ([RecognizedLine]) -> Void
 
     func makeUIViewController(context: Context) -> LabelScannerController {
         let controller = LabelScannerController()
-        controller.onText = onText
+        controller.onLines = onLines
         return controller
     }
 
     func updateUIViewController(_ controller: LabelScannerController, context: Context) {
-        controller.onText = onText
+        controller.onLines = onLines
     }
 }
 
 final class LabelScannerController: UIViewController, AVCaptureVideoDataOutputSampleBufferDelegate {
-    var onText: (([String]) -> Void)?
+    var onLines: (([RecognizedLine]) -> Void)?
 
     private let session = AVCaptureSession()
     private var previewLayer: AVCaptureVideoPreviewLayer?
@@ -89,8 +89,13 @@ final class LabelScannerController: UIViewController, AVCaptureVideoDataOutputSa
         let handler = VNImageRequestHandler(cvPixelBuffer: pixelBuffer, orientation: .right, options: [:])
         try? handler.perform([request])
 
-        let strings = (request.results ?? []).compactMap { $0.topCandidates(1).first?.string }
-        guard !strings.isEmpty else { return }
-        DispatchQueue.main.async { [weak self] in self?.onText?(strings) }
+        // Each observation's bounding-box height (normalized 0–1) is its relative
+        // font size — bigger text is more likely to be the machine's name.
+        let lines: [RecognizedLine] = (request.results ?? []).compactMap { observation in
+            guard let text = observation.topCandidates(1).first?.string else { return nil }
+            return RecognizedLine(text: text, prominence: Double(observation.boundingBox.height))
+        }
+        guard !lines.isEmpty else { return }
+        DispatchQueue.main.async { [weak self] in self?.onLines?(lines) }
     }
 }

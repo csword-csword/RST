@@ -76,7 +76,7 @@ struct WorkoutFlowView: View {
     private var content: some View {
         switch step {
         case .machineScan:
-            MachineScanView(candidates: catalog.machines, planned: plannedExercise) { picked in
+            MachineScanView(planned: plannedExercise) { picked in
                 machine = picked
                 step = .stackScan
             }

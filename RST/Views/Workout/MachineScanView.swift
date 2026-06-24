@@ -5,7 +5,8 @@ import SwiftUI
 /// simulator (no camera), a mock classifier stands in so the flow is demoable.
 struct MachineScanView: View {
     @Environment(\.equipmentClassifier) private var classifier
-    let candidates: [Machine]
+    @Environment(\.catalogStore) private var catalogStore
+    /// Kept for the planned-machine shortcut; recognition uses the master list.
     let planned: TemplateExercise?
     var onConfirm: (Machine) -> Void
 
@@ -13,10 +14,13 @@ struct MachineScanView: View {
     @State private var fromLabel = false
     @State private var showManualPicker = false
 
+    /// Facility-agnostic: match and pick from the universal taxonomy.
+    private var candidates: [Machine] { catalogStore.master.machines }
+
     var body: some View {
         ZStack {
-            LabelScannerView { text in
-                if let match = EquipmentTextMatcher.bestMatch(in: text, candidates: candidates) {
+            LabelScannerView { lines in
+                if let match = EquipmentTextMatcher.bestMatch(in: lines, candidates: candidates) {
                     if detection?.machine.id != match.machine.id {
                         withAnimation(.snappy) {
                             detection = match

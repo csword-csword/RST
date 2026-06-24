@@ -18,6 +18,12 @@ struct Machine: Codable, Identifiable, Hashable {
     let stackMin: Double
     let stackMax: Double
     let increment: Double
+    /// Alternate label names manufacturers use for the same machine, for OCR
+    /// matching (e.g. "Iso-Lateral Front Lat Pulldown" → Lat Pulldown).
+    var aliases: [String]? = nil
+
+    /// Canonical name plus all aliases — the strings OCR matches against.
+    var allNames: [String] { [name] + (aliases ?? []) }
 }
 
 extension Machine {

@@ -41,7 +41,7 @@ struct SettingsView: View {
                 } header: {
                     Text("Gym Profile")
                 } footer: {
-                    Text("Chain profiles (Planet Fitness, LA Fitness) limit equipment detection and the workout builder to the machines those gyms carry.")
+                    Text("Machine scanning works at any gym. Chain profiles (Planet Fitness, LA Fitness) just tailor the workout builder to the machines those gyms carry.")
                 }
 
                 Section("Units") {
