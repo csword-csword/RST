@@ -63,6 +63,26 @@ final class WorkoutStatsTests: XCTestCase {
         XCTAssertEqual(form.cadenceConsistency ?? 0, 1.0, accuracy: 0.001)
     }
 
+    func testOneRepMaxSeriesSortedAscending() throws {
+        let ctx = try makeContext()
+        let early = Workout(startedAt: Date(timeIntervalSince1970: 1000))
+        let late = Workout(startedAt: Date(timeIntervalSince1970: 2000))
+        ctx.insert(early); ctx.insert(late)
+        let e1 = ExerciseEntry(machineID: "m", machineName: "M", weight: 100)
+        early.exercises.append(e1)
+        e1.sets.append(SetRecord(reps: 5, weight: 100, startedAt: .now))
+        let e2 = ExerciseEntry(machineID: "m", machineName: "M", weight: 110)
+        late.exercises.append(e2)
+        e2.sets.append(SetRecord(reps: 5, weight: 110, startedAt: .now))
+
+        // Pass newest-first; expect oldest-first output.
+        let series = WorkoutStats.oneRepMaxSeries(for: "m", from: [late, early])
+        XCTAssertEqual(series.count, 2)
+        XCTAssertEqual(series.first?.date, early.startedAt)
+        XCTAssertEqual(series.last?.oneRepMax ?? 0,
+                       WorkoutStats.estimatedOneRepMax(weight: 110, reps: 5), accuracy: 0.01)
+    }
+
     func testWeeklyVolumeBucketsCurrentWeek() throws {
         let ctx = try makeContext()
         let cal = Calendar(identifier: .gregorian)

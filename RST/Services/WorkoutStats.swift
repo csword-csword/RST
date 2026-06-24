@@ -16,6 +16,12 @@ struct WeekVolume: Identifiable {
     var id: Date { weekStart }
 }
 
+struct StrengthPoint: Identifiable {
+    let date: Date
+    let oneRepMax: Double
+    var id: Date { date }
+}
+
 struct MuscleVolume: Identifiable {
     let muscle: String
     let volume: Double
@@ -70,6 +76,21 @@ enum WorkoutStats {
                       estimatedOneRepMax: acc.best1RM)
         }
         .sorted { $0.estimatedOneRepMax > $1.estimatedOneRepMax }
+    }
+
+    /// Best estimated 1RM for one machine per workout, oldest → newest — the
+    /// strength-progression line.
+    static func oneRepMaxSeries(for machineID: String, from workouts: [Workout]) -> [StrengthPoint] {
+        var points: [StrengthPoint] = []
+        for workout in workouts {
+            let best = workout.exercises
+                .filter { $0.machineID == machineID }
+                .flatMap { $0.sets }
+                .map { estimatedOneRepMax(weight: $0.weight, reps: $0.reps) }
+                .max()
+            if let best { points.append(StrengthPoint(date: workout.startedAt, oneRepMax: best)) }
+        }
+        return points.sorted { $0.date < $1.date }
     }
 
     /// Total volume per week for the last `weeks` weeks (oldest → newest).
