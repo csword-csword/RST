@@ -1,0 +1,48 @@
+{
+  "identifier" : "B1A7C0DE-0001-4000-8000-PINPOINT0001",
+  "nonRenewingSubscriptions" : [],
+  "products" : [],
+  "settings" : {
+    "_applicationInternalID" : "",
+    "_developerTeamID" : "",
+    "_failTransactionsEnabled" : false,
+    "_lastSynchronizedDate" : 0,
+    "_locale" : "en_US",
+    "_storefront" : "USA",
+    "_storeKitErrors" : []
+  },
+  "subscriptionGroups" : [
+    {
+      "id" : "B1A7C0DE-0002-4000-8000-PINPOINT0002",
+      "localizations" : [],
+      "name" : "Pinpoint Pro",
+      "subscriptions" : [
+        {
+          "adHocOffers" : [],
+          "codeOffers" : [],
+          "displayPrice" : "49.99",
+          "familyShareable" : false,
+          "groupNumber" : 1,
+          "internalID" : "B1A7C0DE-0003-4000-8000-PINPOINT0003",
+          "introductoryOffer" : null,
+          "localizations" : [
+            {
+              "description" : "Track every machine and your full training history.",
+              "displayName" : "Pinpoint Pro (Annual)",
+              "locale" : "en_US"
+            }
+          ],
+          "productID" : "fitness.pinpoint.annual",
+          "recurringSubscriptionPeriod" : "P1Y",
+          "referenceName" : "Pinpoint Pro Annual",
+          "subscriptionGroupID" : "B1A7C0DE-0002-4000-8000-PINPOINT0002",
+          "type" : "RecurringSubscription"
+        }
+      ]
+    }
+  ],
+  "version" : {
+    "major" : 4,
+    "minor" : 0
+  }
+}

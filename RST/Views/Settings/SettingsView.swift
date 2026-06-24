@@ -4,13 +4,18 @@ struct SettingsView: View {
     @Environment(\.catalogStore) private var catalogStore
     @Environment(\.locationService) private var locationService
     @Environment(\.pinDevice) private var pinDevice
+    @Environment(\.subscriptions) private var subscriptions
+    @Environment(\.trial) private var trial
     @AppStorage("gymProfileID") private var gymProfileID = "standard"
     @AppStorage("weightUnit") private var weightUnitRaw = WeightUnit.lb.rawValue
     @AppStorage("useSimulatedPin") private var useSimulatedPin = false
+    @State private var showPaywall = false
 
     var body: some View {
         NavigationStack {
             Form {
+                subscriptionSection
+
                 Section {
                     Picker("Gym", selection: $gymProfileID) {
                         ForEach(catalogStore.catalogs) { catalog in
@@ -85,6 +90,46 @@ struct SettingsView: View {
             .navigationTitle("Settings")
         }
         .onAppear { locationService.requestLocation() }
+        .sheet(isPresented: $showPaywall) { PaywallView() }
+    }
+
+    @ViewBuilder
+    private var subscriptionSection: some View {
+        Section {
+            LabeledContent("Status") {
+                if subscriptions.isSubscribed {
+                    Label("Pinpoint Pro", systemImage: "checkmark.seal.fill")
+                        .foregroundStyle(Theme.accent)
+                } else if trial.trialMachineID != nil {
+                    Text("Free trial").foregroundStyle(Theme.warning)
+                } else {
+                    Text("Not subscribed").foregroundStyle(.secondary)
+                }
+            }
+
+            if !subscriptions.isSubscribed {
+                if let name = trial.trialMachineName {
+                    LabeledContent("Free machine", value: name)
+                    Button("Change free machine") { trial.reset() }
+                        .foregroundStyle(Theme.accent)
+                }
+                Button("Subscribe to Pinpoint Pro") { showPaywall = true }
+                    .foregroundStyle(Theme.accent)
+            } else if let url = URL(string: "https://apps.apple.com/account/subscriptions") {
+                Link("Manage Subscription", destination: url)
+            }
+
+            Button("Restore Purchases") {
+                Task { await subscriptions.restore() }
+            }
+            .foregroundStyle(.secondary)
+        } header: {
+            Text("Subscription")
+        } footer: {
+            Text(subscriptions.isSubscribed
+                 ? "Thanks for supporting Pinpoint. Manage or cancel anytime in your Apple Account."
+                 : "Pinpoint is free on one machine. Pinpoint Pro is \(subscriptions.priceText)/year and unlocks every machine.")
+        }
     }
 
     private var statusText: String {

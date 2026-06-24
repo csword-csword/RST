@@ -2,6 +2,9 @@ import SwiftUI
 
 struct RootView: View {
     @Environment(\.pinDevice) private var pinDevice
+    @Environment(\.subscriptions) private var subscriptions
+    @AppStorage("didOnboard") private var didOnboard = false
+    @State private var showOnboarding = false
 
     var body: some View {
         TabView {
@@ -17,8 +20,15 @@ struct RootView: View {
         .tint(Theme.accent)
         .preferredColorScheme(.dark)
         .fontDesign(.rounded)
-        // Begin scanning for the smart pin as soon as the app launches.
+        // Begin scanning for the smart pin and load subscription state at launch.
         .task { await pinDevice.connect() }
+        .task { subscriptions.start() }
+        .onAppear {
+            if !didOnboard { showOnboarding = true }
+        }
+        .sheet(isPresented: $showOnboarding, onDismiss: { didOnboard = true }) {
+            OnboardingView()
+        }
     }
 }
 

@@ -11,6 +11,8 @@ struct RSTApp: App {
     @State private var locationService = LocationService()
     @State private var pinDevice: any PinDeviceService
     @State private var pinController: any PinControlling
+    @State private var subscriptions = SubscriptionStore()
+    @State private var trial = TrialStore()
 
     init() {
         _pinDevice = State(initialValue: Self.makePinDevice())
@@ -40,6 +42,8 @@ struct RSTApp: App {
                 .environment(\.locationService, locationService)
                 .environment(\.pinDevice, pinDevice)
                 .environment(\.pinController, pinController)
+                .environment(\.subscriptions, subscriptions)
+                .environment(\.trial, trial)
                 .environment(\.equipmentClassifier, MockEquipmentClassifier())
                 .environment(\.stackReader, MockWeightStackReader())
         }
