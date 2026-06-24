@@ -10,6 +10,7 @@ struct SettingsView: View {
     @AppStorage("gymProfileID") private var gymProfileID = "standard"
     @AppStorage("weightUnit") private var weightUnitRaw = WeightUnit.lb.rawValue
     @AppStorage("useSimulatedPin") private var useSimulatedPin = false
+    @AppStorage("autoDetectGym") private var autoDetectGym = true
     @AppStorage("defaultRestSeconds") private var defaultRestSeconds = 90
     @AppStorage("voiceCoachEnabled") private var voiceCoachEnabled = false
     @State private var sheet: SettingsSheet?
@@ -33,6 +34,7 @@ struct SettingsView: View {
                 subscriptionSection
 
                 Section {
+                    Toggle("Auto-detect gym", isOn: $autoDetectGym)
                     Picker("Gym", selection: $gymProfileID) {
                         ForEach(catalogStore.catalogs) { catalog in
                             Text(catalog.name).tag(catalog.id)
@@ -41,7 +43,7 @@ struct SettingsView: View {
                 } header: {
                     Text("Gym Profile")
                 } footer: {
-                    Text("Machine scanning works at any gym. Chain profiles (Planet Fitness, LA Fitness) just tailor the workout builder to the machines those gyms carry.")
+                    Text("Machine scanning works at any gym. With auto-detect on, Pinpoint names your location and switches to the matching chain profile (Planet Fitness, LA Fitness) automatically. The profile just tailors the workout builder.")
                 }
 
                 Section("Units") {

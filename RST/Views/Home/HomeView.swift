@@ -11,6 +11,7 @@ struct HomeView: View {
     @Environment(\.locationService) private var locationService
     @Environment(\.subscriptions) private var subscriptions
     @AppStorage("gymProfileID") private var gymProfileID = "standard"
+    @AppStorage("autoDetectGym") private var autoDetectGym = true
     @AppStorage("weightUnit") private var weightUnitRaw = WeightUnit.lb.rawValue
     @Query(sort: \Workout.startedAt, order: .reverse) private var workouts: [Workout]
     @Query(sort: \WorkoutTemplate.createdAt, order: .reverse) private var templates: [WorkoutTemplate]
@@ -42,6 +43,13 @@ struct HomeView: View {
             .navigationDestination(for: String.self) { _ in InsightsView() }
         }
         .onAppear { locationService.requestLocation() }
+        .onChange(of: locationService.detectedChainID) { _, chain in
+            // Auto-switch the builder's gym profile when a known chain is detected.
+            if autoDetectGym, let chain, chain != gymProfileID,
+               catalogStore.catalogs.contains(where: { $0.id == chain }) {
+                gymProfileID = chain
+            }
+        }
         .fullScreenCover(item: $launch) { launch in
             WorkoutFlowView(template: launch.template)
         }

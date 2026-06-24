@@ -10,13 +10,13 @@ The **smart pin is now wired to real hardware** — the MOKO M1Pro sensor, drive
 
 Setting the weight is a physical action — you place the smart pin in the stack at the machine. The app then:
 
-1. **Scan machine** — point the camera at the machine's **name label**; on-device OCR (Vision) reads the text and matches it to a **universal machine taxonomy** (`EquipmentTextMatcher` against `master.json`, ~35 machine types with manufacturer aliases). Works at any gym, anywhere — no gym profile required. A mock classifier stands in on the simulator.
+1. **Scan machine** — point the camera at the machine's **name label**; on-device OCR (Vision) reads the text and matches it to a **universal machine taxonomy** (`EquipmentTextMatcher` against `master.json` — 39 machine types with manufacturer aliases grounded in the Hammer Strength / Technogym / Cybex / Precor / Matrix catalogs). Works at any gym, anywhere — no gym profile required. A mock classifier stands in on the simulator.
 2. **Read the stack** — point the camera at the weight stack; the app reads where the pin was placed and infers the loaded weight (with a correction stepper for misreads, and a mismatch warning when a template calls for a different weight). *Stub: `MockWeightStackReader`.*
 3. **Lift** — sets and reps are tracked live from the pin's accelerometer, with automatic set-end detection on rest. **Real:** `MokoPinDevice` scans the M1Pro's BLE advertisement and counts reps from its broadcast acceleration (`MockPinDevice` still drives the simulator and demos).
 
 Plus:
 
-- **Location tracking** — each workout records where it happened (CoreLocation + reverse geocoding).
+- **Auto gym detection** — CoreLocation + MapKit points-of-interest finds the nearest fitness center and names the workout after it; a recognized chain (Planet Fitness, LA Fitness) auto-switches the builder's gym profile (`LocationService`, toggle in Settings).
 - **Gym profiles** — bundled equipment catalogs for a generic gym, **Planet Fitness**, and **LA Fitness**; detection and the builder are scoped to the active profile's machines (`RST/Resources/Catalogs/*.json`).
 - **History** — every workout stored with date, time, location, machines, and sets × reps × weight (SwiftData).
 - **Builder** — compose reusable workout templates from an equipment catalog and run them with planned sets/reps/weights pre-filled.
