@@ -108,7 +108,7 @@ struct MachineScanView: View {
 
                 HStack(spacing: 12) {
                     Button("Rescan") {
-                        withAnimation { detection = nil; fromLabel = false }
+                        withAnimation { self.detection = nil; fromLabel = false }
                     }
                     .buttonStyle(SecondaryButtonStyle())
                     Button("Pick Manually") { showManualPicker = true }
