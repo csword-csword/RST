@@ -33,7 +33,7 @@ enum EquipmentTextMatcher {
     }
 
     /// Convenience for plain strings (no prominence) — used by tests.
-    static func bestMatch(in texts: [String],
+    static func bestMatch(strings texts: [String],
                           candidates: [Machine],
                           threshold: Double = 0.5) -> EquipmentDetection? {
         bestMatch(in: texts.map { RecognizedLine(text: $0, prominence: 0.5) },

@@ -17,13 +17,13 @@ final class EquipmentTextMatcherTests: XCTestCase {
     }
 
     func testExactLabelMatches() {
-        let d = EquipmentTextMatcher.bestMatch(in: ["LAT PULLDOWN"], candidates: candidates)
+        let d = EquipmentTextMatcher.bestMatch(strings: ["LAT PULLDOWN"], candidates: candidates)
         XCTAssertEqual(d?.machine.id, "lat-pulldown")
         XCTAssertGreaterThan(d?.confidence ?? 0, 0.85)
     }
 
     func testMatchesViaManufacturerAlias() {
-        let d = EquipmentTextMatcher.bestMatch(in: ["ISO-LATERAL FRONT LAT PULLDOWN"], candidates: candidates)
+        let d = EquipmentTextMatcher.bestMatch(strings: ["ISO-LATERAL FRONT LAT PULLDOWN"], candidates: candidates)
         XCTAssertEqual(d?.machine.id, "lat-pulldown")
     }
 
@@ -38,16 +38,16 @@ final class EquipmentTextMatcherTests: XCTestCase {
     }
 
     func testDisambiguatesSimilarNames() {
-        XCTAssertEqual(EquipmentTextMatcher.bestMatch(in: ["SEATED ROW"], candidates: candidates)?.machine.id, "seated-row")
-        XCTAssertEqual(EquipmentTextMatcher.bestMatch(in: ["CHEST PRESS"], candidates: candidates)?.machine.id, "chest-press")
-        XCTAssertEqual(EquipmentTextMatcher.bestMatch(in: ["LEG PRESS"], candidates: candidates)?.machine.id, "leg-press")
+        XCTAssertEqual(EquipmentTextMatcher.bestMatch(strings: ["SEATED ROW"], candidates: candidates)?.machine.id, "seated-row")
+        XCTAssertEqual(EquipmentTextMatcher.bestMatch(strings: ["CHEST PRESS"], candidates: candidates)?.machine.id, "chest-press")
+        XCTAssertEqual(EquipmentTextMatcher.bestMatch(strings: ["LEG PRESS"], candidates: candidates)?.machine.id, "leg-press")
     }
 
     func testUnrelatedTextDoesNotMatch() {
-        XCTAssertNil(EquipmentTextMatcher.bestMatch(in: ["EXIT", "FIRE EXTINGUISHER"], candidates: candidates))
+        XCTAssertNil(EquipmentTextMatcher.bestMatch(strings: ["EXIT", "FIRE EXTINGUISHER"], candidates: candidates))
     }
 
     func testEmptyTextDoesNotMatch() {
-        XCTAssertNil(EquipmentTextMatcher.bestMatch(in: [], candidates: candidates))
+        XCTAssertNil(EquipmentTextMatcher.bestMatch(strings: [], candidates: candidates))
     }
 }

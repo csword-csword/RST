@@ -1,80 +1,163 @@
 import Foundation
 
+/// One accelerometer reading, in g, on all three axes.
 struct AccelSample {
     let time: TimeInterval
-    let magnitudeG: Double
+    let x: Double
+    let y: Double
+    let z: Double
 }
 
-/// Counts reps from a stream of acceleration-magnitude samples.
+/// Counts reps by detecting a full **out-and-back cycle** on the weight
+/// stack's pin, rather than counting acceleration peaks.
 ///
-/// The pin moves with the weight stack, so each rep produces a pulse of dynamic
-/// acceleration (the magnitude deviating from the ~1 g gravity baseline). We
-/// track a slow EMA baseline to stay orientation-independent, then count one rep
-/// per pulse that exceeds `threshold`, with hysteresis (must fall below
-/// `rearmFraction × threshold` to re-arm) and a `minRepInterval` refractory gap
-/// to reject double-counts.
+/// On a guided weight stack the pin moves along essentially one axis: it
+/// accelerates away from rest, decelerates, reverses, and decelerates again
+/// back to rest. That physical round trip naturally produces a positive pulse
+/// followed by a negative pulse (or vice versa) in the deviation from gravity
+/// on whichever axis is aligned with the stack's travel — which is exactly why
+/// a plain magnitude/peak threshold over- or under-counts: it sees the
+/// sub-pulses within a single rep as separate events instead of one cycle.
 ///
-/// The sample rate here is the sensor's *advertising* rate while moving (a few
-/// Hz to ~10 Hz), not a true IMU stream — so these defaults are a starting point
-/// and are meant to be tuned against the real M1Pro. See `SENSOR_SETUP.md`.
+/// This tracks direction instead:
+/// 1. **Resting** — deviation on every axis is small. Once one axis exceeds
+///    `moveThreshold`, that axis is locked in as the rep's dominant axis and
+///    we note which way it moved (`outbound`).
+/// 2. **Outbound** — wait for the *same* axis to swing past the threshold in
+///    the *opposite* direction (`inbound`) — the reversal.
+/// 3. **Inbound** — wait for that axis to settle back within `restThreshold`
+///    of the baseline — the pin (and stack) has returned to where it started.
+///    That completes one rep.
+///
+/// The dominant axis is re-detected at the start of every cycle rather than
+/// fixed, so it self-adjusts to however the pin happens to sit in a given
+/// machine. A slow gravity baseline is tracked per axis, but only while
+/// resting, so an in-progress rep can't drag the baseline along with it.
+///
+/// The sample rate here is the sensor's *advertising* rate while moving (up to
+/// ~10 Hz), not a true high-rate IMU stream — these defaults are a starting
+/// point meant to be tuned against real M1Pro data. See `SENSOR_SETUP.md`.
 final class RepCounter {
-    var threshold: Double          // g of dynamic acceleration to register a peak
-    var rearmFraction: Double      // must drop below threshold×this to count again
-    var minRepInterval: TimeInterval
-    var baselineAlpha: Double      // EMA weight for the gravity baseline
+    /// g of deviation from baseline needed to register as "moving."
+    var moveThreshold: Double
+    /// g of deviation below which the pin is considered back at rest.
+    var restThreshold: Double
+    /// EMA weight for the per-axis gravity baseline (applied only at rest).
+    var baselineAlpha: Double
+    /// Minimum total cycle time to count as a real rep — rejects noise flicker.
+    var minRepDuration: TimeInterval
+    /// Abandon (don't count) a cycle that's still in progress after this long,
+    /// and reset to resting — guards against getting stuck mid-cycle.
+    var maxRepDuration: TimeInterval
 
     private(set) var count = 0
+    /// Current deviation magnitude on the tracked axis (0 while resting), for
+    /// live UI feedback.
     private(set) var lastDynamic = 0.0
 
-    private var baseline = 1.0
-    private var baselinePrimed = false
-    private var armed = true
-    private var lastRepTime = -Double.greatestFiniteMagnitude
+    private enum Phase { case resting, outbound, inbound }
+    private enum Axis { case x, y, z }
 
-    init(threshold: Double = 0.15,
-         rearmFraction: Double = 0.5,
-         minRepInterval: TimeInterval = 0.7,
-         baselineAlpha: Double = 0.2) {
-        self.threshold = threshold
-        self.rearmFraction = rearmFraction
-        self.minRepInterval = minRepInterval
+    private var phase: Phase = .resting
+    private var baseline = (x: 0.0, y: 0.0, z: 0.0)
+    private var baselinePrimed = false
+    private var axis: Axis?
+    private var outboundSign: Double = 1
+    private var phaseStartTime: TimeInterval = 0
+
+    init(moveThreshold: Double = 0.12,
+         restThreshold: Double = 0.06,
+         baselineAlpha: Double = 0.08,
+         minRepDuration: TimeInterval = 0.4,
+         maxRepDuration: TimeInterval = 4.0) {
+        self.moveThreshold = moveThreshold
+        self.restThreshold = restThreshold
         self.baselineAlpha = baselineAlpha
+        self.minRepDuration = minRepDuration
+        self.maxRepDuration = maxRepDuration
     }
 
     func reset() {
         count = 0
         lastDynamic = 0
-        baseline = 1.0
+        phase = .resting
         baselinePrimed = false
-        armed = true
-        lastRepTime = -Double.greatestFiniteMagnitude
+        axis = nil
+        phaseStartTime = 0
     }
 
-    /// Feeds one sample. Returns `true` if it completed a rep.
+    /// Feeds one sample. Returns `true` if it just completed a rep.
     @discardableResult
     func ingest(_ sample: AccelSample) -> Bool {
         if !baselinePrimed {
-            baseline = sample.magnitudeG
+            baseline = (sample.x, sample.y, sample.z)
             baselinePrimed = true
-        } else {
-            baseline += baselineAlpha * (sample.magnitudeG - baseline)
+            return false
         }
 
-        let dynamic = abs(sample.magnitudeG - baseline)
-        lastDynamic = dynamic
-
-        if dynamic < threshold * rearmFraction {
-            armed = true
+        // Only adapt the baseline while resting, so a rep in progress can't
+        // pull the baseline toward itself.
+        if phase == .resting {
+            baseline.x += baselineAlpha * (sample.x - baseline.x)
+            baseline.y += baselineAlpha * (sample.y - baseline.y)
+            baseline.z += baselineAlpha * (sample.z - baseline.z)
         }
 
-        if armed,
-           dynamic >= threshold,
-           sample.time - lastRepTime >= minRepInterval {
-            armed = false
-            lastRepTime = sample.time
+        let dx = sample.x - baseline.x
+        let dy = sample.y - baseline.y
+        let dz = sample.z - baseline.z
+
+        switch phase {
+        case .resting:
+            let candidates: [(Axis, Double)] = [(.x, dx), (.y, dy), (.z, dz)]
+            let strongest = candidates.max { abs($0.1) < abs($1.1) }!
+            lastDynamic = abs(strongest.1)
+            guard abs(strongest.1) >= moveThreshold else { return false }
+            axis = strongest.0
+            outboundSign = strongest.1 > 0 ? 1 : -1
+            phase = .outbound
+            phaseStartTime = sample.time
+            return false
+
+        case .outbound:
+            let value = axisValue(dx, dy, dz)
+            lastDynamic = abs(value)
+            if sample.time - phaseStartTime > maxRepDuration {
+                phase = .resting
+                axis = nil
+                return false
+            }
+            // Reversed past the threshold on the other side — heading back.
+            if value * outboundSign < -moveThreshold {
+                phase = .inbound
+            }
+            return false
+
+        case .inbound:
+            let value = axisValue(dx, dy, dz)
+            lastDynamic = abs(value)
+            if sample.time - phaseStartTime > maxRepDuration {
+                phase = .resting
+                axis = nil
+                return false
+            }
+            guard abs(value) <= restThreshold else { return false }
+            // Back at rest: the cycle is complete.
+            let duration = sample.time - phaseStartTime
+            phase = .resting
+            axis = nil
+            guard duration >= minRepDuration else { return false }
             count += 1
             return true
         }
-        return false
+    }
+
+    private func axisValue(_ dx: Double, _ dy: Double, _ dz: Double) -> Double {
+        switch axis {
+        case .x: return dx
+        case .y: return dy
+        case .z: return dz
+        case nil: return 0
+        }
     }
 }

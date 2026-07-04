@@ -12,7 +12,7 @@ connection or pairing password is required**.
 | Layer | File | Role |
 |-------|------|------|
 | Advertisement parser | `RST/Services/SensorFrame.swift` | Decodes status, motion count, X/Y/Z accel (mg), battery, Tag ID |
-| Rep algorithm | `RST/Services/RepCounter.swift` | Peak detection on dynamic acceleration with hysteresis + refractory gap |
+| Rep algorithm | `RST/Services/RepCounter.swift` | Direction-based: counts one full out-and-back cycle on the dominant axis per rep |
 | Device driver | `RST/Services/MokoPinDevice.swift` | `CBCentralManager` scan → parse → count; rest auto-detected when motion stops |
 | Mock | `RST/Services/PinDeviceService.swift` | Simulated session for the simulator / demos |
 
@@ -63,15 +63,29 @@ MOKO's **MKSensor / BeaconX Pro** app. These values adapt the manual's
 
 ## Tuning rep detection
 
+`RepCounter` counts a rep as a full **out-and-back cycle**: the pin accelerates
+away from rest on whichever axis is aligned with the stack's travel, reverses
+direction, and settles back near where it started. It re-detects the dominant
+axis at the start of every cycle rather than assuming a fixed orientation, and
+tracks a slow per-axis gravity baseline (updated only while resting) so it
+isn't thrown off by however the pin happens to sit in a given machine.
+
 If reps over- or under-count with your machine and pin orientation, adjust in
 `RepCounter.swift` (or via the initializer):
 
-- `threshold` (default `0.15` g) — lower = more sensitive.
-- `minRepInterval` (default `0.7` s) — minimum time between counted reps.
-- `rearmFraction` / `baselineAlpha` — hysteresis and gravity-tracking speed.
+- `moveThreshold` (default `0.12` g) — deviation needed to register as
+  "moving." Lower = more sensitive to light lifts; too low picks up noise.
+- `restThreshold` (default `0.06` g) — deviation below which the pin is
+  considered back at rest, completing the cycle.
+- `baselineAlpha` (default `0.08`) — how fast the per-axis gravity baseline
+  adapts while resting.
+- `minRepDuration` / `maxRepDuration` (default `0.4 s` / `4 s`) — rejects
+  noise-fast flicker as a false rep, and abandons (without counting) a cycle
+  that never completes, so a stall can't lock up the counter.
 
-`MokoPinDevice.restTimeout` (default `4 s`) controls how long without motion ends
-a set in the app.
+`MokoPinDevice.restTimeout` (default `5 s`) controls how long without motion
+ends a set in the app — kept at least 5s so the pause between reps isn't
+mistaken for the end of the set.
 
 ## Testing checklist
 

@@ -16,8 +16,10 @@ import Observation
 /// to do that in-app.
 @Observable @MainActor
 final class MokoPinDevice: NSObject, PinDeviceService {
-    /// 16-bit Service Data UUID MOKO uses for the customized frames.
-    static let serviceUUID = CBUUID(string: "EA01")
+    /// 16-bit Service Data UUID MOKO uses for the customized frames. Read from
+    /// the nonisolated CBCentralManagerDelegate callbacks, so it's declared
+    /// nonisolated too — CBUUID is an immutable value wrapper, safe to share.
+    nonisolated static let serviceUUID = CBUUID(string: "EA01")
 
     private(set) var connectionState: PinConnectionState = .disconnected
     private(set) var phase: SetPhase = .idle
@@ -25,8 +27,10 @@ final class MokoPinDevice: NSObject, PinDeviceService {
     private(set) var deviceInfo: PinDeviceInfo?
     private(set) var liveAcceleration: Double = 0
 
-    /// Seconds without motion before an active set is auto-ended.
-    var restTimeout: TimeInterval = 4.0
+    /// Seconds without motion before an active set is auto-ended. At least 5s
+    /// so the pause between reps (and a rep's own return-to-rest moment)
+    /// doesn't get mistaken for the end of the set.
+    var restTimeout: TimeInterval = 5.0
     /// If set, only lock onto a sensor advertising this Tag ID (hex). Persisted
     /// pairing lives in UserDefaults under `pairedSensorTagID`.
     var pairedTagID: String? = UserDefaults.standard.string(forKey: "pairedSensorTagID")
@@ -153,11 +157,18 @@ final class MokoPinDevice: NSObject, PinDeviceService {
 
         guard phase == .lifting else { return }
 
-        if frame.motionActive { lastMotionAt = Date() }
         let sample = AccelSample(time: Date().timeIntervalSince1970,
-                                 magnitudeG: frame.magnitudeG)
+                                 x: Double(frame.accelX) / 1000.0,
+                                 y: Double(frame.accelY) / 1000.0,
+                                 z: Double(frame.accelZ) / 1000.0)
         let countedRep = counter.ingest(sample)
         pulseLive(counter.lastDynamic)
+        // Refresh the "still moving" timestamp on the sensor's own motion bit
+        // or whenever the counter isn't fully at rest (mid-rep), so the
+        // watchdog can't cut off a set while a rep is in progress.
+        if frame.motionActive || counter.lastDynamic > counter.restThreshold {
+            lastMotionAt = Date()
+        }
         if countedRep {
             repCount = counter.count
             lastMotionAt = Date()
@@ -165,7 +176,7 @@ final class MokoPinDevice: NSObject, PinDeviceService {
     }
 
     private func pulseLive(_ value: Double) {
-        liveAcceleration = min(value / 0.4, 1.0)  // normalize ~0.4g to full
+        liveAcceleration = min(value / 0.3, 1.0)  // normalize ~0.3g to full
         liveDecay?.cancel()
         liveDecay = Task { [weak self] in
             try? await Task.sleep(for: .milliseconds(400))
