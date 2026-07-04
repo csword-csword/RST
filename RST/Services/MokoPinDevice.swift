@@ -29,9 +29,9 @@ final class MokoPinDevice: NSObject, PinDeviceService {
     var restTimeout: TimeInterval = 4.0
     /// If set, only lock onto a sensor advertising this Tag ID (hex). Persisted
     /// pairing lives in UserDefaults under `pairedSensorTagID`.
-    var pairedTagID: String?
+    var pairedTagID: String? = UserDefaults.standard.string(forKey: "pairedSensorTagID")
 
-    private var central: CBCentralManager!
+    private var central: CBCentralManager?
     private let counter = RepCounter()
     private var lockedTagID: String?
     private var lastMotionAt: Date?
@@ -41,8 +41,17 @@ final class MokoPinDevice: NSObject, PinDeviceService {
 
     nonisolated override init() {
         super.init()
-        pairedTagID = UserDefaults.standard.string(forKey: "pairedSensorTagID")
-        central = CBCentralManager(delegate: self, queue: nil)
+    }
+
+    /// Creates the central manager on first use, on the main actor. (It can't
+    /// be made in the nonisolated init, and deferring it also defers iOS's
+    /// Bluetooth permission prompt until we actually start scanning.)
+    @discardableResult
+    private func ensureCentral() -> CBCentralManager {
+        if let central { return central }
+        let created = CBCentralManager(delegate: self, queue: nil)
+        central = created
+        return created
     }
 
     // MARK: - PinDeviceService
@@ -51,12 +60,13 @@ final class MokoPinDevice: NSObject, PinDeviceService {
         guard connectionState == .disconnected else { return }
         wantScan = true
         connectionState = .scanning
+        ensureCentral()
         startScanIfReady()
     }
 
     func disconnect() {
         wantScan = false
-        if central.state == .poweredOn { central.stopScan() }
+        if let central, central.state == .poweredOn { central.stopScan() }
         watchdog?.cancel(); watchdog = nil
         liveDecay?.cancel(); liveDecay = nil
         connectionState = .disconnected
@@ -74,6 +84,7 @@ final class MokoPinDevice: NSObject, PinDeviceService {
         lastMotionAt = Date()
         // Make sure we're scanning so accel keeps flowing during the set.
         if connectionState != .connected { connectionState = .scanning }
+        ensureCentral()
         startScanIfReady()
         startWatchdog()
     }
@@ -101,7 +112,7 @@ final class MokoPinDevice: NSObject, PinDeviceService {
     // MARK: - Internals
 
     private func startScanIfReady() {
-        guard wantScan, central.state == .poweredOn else { return }
+        guard wantScan, let central, central.state == .poweredOn else { return }
         central.scanForPeripherals(
             withServices: [Self.serviceUUID],
             options: [CBCentralManagerScanOptionAllowDuplicatesKey: true]

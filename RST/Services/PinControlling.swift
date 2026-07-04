@@ -95,12 +95,13 @@ final class MockPinController: PinControlling {
     private(set) var connectedInfo: PinDeviceInfo?
     private(set) var discoveredCharacteristics: [String] = []
 
-    private var password: String
+    // Default values initialize storage directly, which is allowed from a
+    // nonisolated init (assignments in the init body would not be — the
+    // @Observable macro makes property setters main-actor isolated).
+    private var password: String = UserDefaults.standard.string(forKey: "mockPinPassword")
+        ?? MokoControlProtocol.defaultPassword
 
-    nonisolated init() {
-        password = UserDefaults.standard.string(forKey: "mockPinPassword")
-            ?? MokoControlProtocol.defaultPassword
-    }
+    nonisolated init() {}
 
     func connect(password: String) async throws {
         state = .scanning

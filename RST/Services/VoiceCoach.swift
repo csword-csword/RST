@@ -9,6 +9,10 @@ final class VoiceCoach {
     var rate: Float = AVSpeechUtteranceDefaultSpeechRate
     var enabled = false
 
+    // Nonisolated so `@State private var voice = VoiceCoach()` can construct it
+    // from SwiftUI's nonisolated view initializer.
+    nonisolated init() {}
+
     func configureAudioSession() {
         let session = AVAudioSession.sharedInstance()
         try? session.setCategory(.playback, mode: .spokenAudio,

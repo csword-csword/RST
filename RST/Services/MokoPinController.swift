@@ -19,15 +19,16 @@ final class MokoPinController: NSObject, PinControlling {
     private(set) var connectedInfo: PinDeviceInfo?
     private(set) var discoveredCharacteristics: [String] = []
 
-    var pairedTagID: String?
+    var pairedTagID: String? = UserDefaults.standard.string(forKey: "pairedSensorTagID")
     var operationTimeout: TimeInterval = 8
 
-    private var central: CBCentralManager!
+    private var central: CBCentralManager?
     private var target: CBPeripheral?
     private var writeChar: CBCharacteristic?
     private var notifyChar: CBCharacteristic?
     private var lastAdvertInfo: PinDeviceInfo?
 
+    private var powerContinuation: CheckedContinuation<Void, Error>?
     private var scanContinuation: CheckedContinuation<Void, Error>?
     private var connectContinuation: CheckedContinuation<Void, Error>?
     private var discoverContinuation: CheckedContinuation<Void, Error>?
@@ -35,16 +36,43 @@ final class MokoPinController: NSObject, PinControlling {
 
     nonisolated override init() {
         super.init()
-        pairedTagID = UserDefaults.standard.string(forKey: "pairedSensorTagID")
-        central = CBCentralManager(delegate: self, queue: nil)
+    }
+
+    /// Creates the central manager on first use, on the main actor (it can't
+    /// be made in the nonisolated init).
+    @discardableResult
+    private func ensureCentral() -> CBCentralManager {
+        if let central { return central }
+        let created = CBCentralManager(delegate: self, queue: nil)
+        central = created
+        return created
+    }
+
+    /// Waits for Bluetooth to power on (the lazily-created central starts in
+    /// `.unknown` for a moment before its first state update).
+    private func waitForPoweredOn() async throws {
+        let central = ensureCentral()
+        switch central.state {
+        case .poweredOn: return
+        case .unauthorized, .poweredOff, .unsupported: throw PinControlError.bluetoothUnavailable
+        default: break  // .unknown / .resetting — wait for the delegate callback
+        }
+        try await withCheckedThrowingContinuation { (cont: CheckedContinuation<Void, Error>) in
+            powerContinuation = cont
+            scheduleTimeout { [weak self] in
+                guard let self, let c = self.powerContinuation else { return }
+                self.powerContinuation = nil
+                c.resume(throwing: PinControlError.bluetoothUnavailable)
+            }
+        }
     }
 
     // MARK: - PinControlling
 
     func connect(password: String) async throws {
-        guard central.state == .poweredOn else { throw PinControlError.bluetoothUnavailable }
         do {
             state = .scanning
+            try await waitForPoweredOn()
             try await findTarget()
 
             state = .connecting
@@ -69,8 +97,8 @@ final class MokoPinController: NSObject, PinControlling {
     }
 
     func disconnect() {
-        if let target { central.cancelPeripheralConnection(target) }
-        if central.state == .poweredOn { central.stopScan() }
+        if let target { central?.cancelPeripheralConnection(target) }
+        if let central, central.state == .poweredOn { central.stopScan() }
         failPending(PinControlError.notConnected)
         target = nil
         writeChar = nil
@@ -108,12 +136,12 @@ final class MokoPinController: NSObject, PinControlling {
     private func findTarget() async throws {
         try await withCheckedThrowingContinuation { (cont: CheckedContinuation<Void, Error>) in
             scanContinuation = cont
-            central.scanForPeripherals(withServices: [MokoPinDevice.serviceUUID],
-                                       options: [CBCentralManagerScanOptionAllowDuplicatesKey: false])
+            ensureCentral().scanForPeripherals(withServices: [MokoPinDevice.serviceUUID],
+                                               options: [CBCentralManagerScanOptionAllowDuplicatesKey: false])
             scheduleTimeout { [weak self] in
                 guard let self, let c = self.scanContinuation else { return }
                 self.scanContinuation = nil
-                self.central.stopScan()
+                self.central?.stopScan()
                 c.resume(throwing: PinControlError.deviceNotFound)
             }
         }
@@ -123,7 +151,7 @@ final class MokoPinController: NSObject, PinControlling {
         guard let target else { throw PinControlError.deviceNotFound }
         try await withCheckedThrowingContinuation { (cont: CheckedContinuation<Void, Error>) in
             connectContinuation = cont
-            central.connect(target)
+            ensureCentral().connect(target)
             scheduleTimeout { [weak self] in
                 guard let self, let c = self.connectContinuation else { return }
                 self.connectContinuation = nil
@@ -169,6 +197,7 @@ final class MokoPinController: NSObject, PinControlling {
     }
 
     private func failPending(_ error: Error) {
+        powerContinuation?.resume(throwing: error); powerContinuation = nil
         scanContinuation?.resume(throwing: error); scanContinuation = nil
         connectContinuation?.resume(throwing: error); connectContinuation = nil
         discoverContinuation?.resume(throwing: error); discoverContinuation = nil
@@ -177,7 +206,21 @@ final class MokoPinController: NSObject, PinControlling {
 }
 
 extension MokoPinController: CBCentralManagerDelegate {
-    nonisolated func centralManagerDidUpdateState(_ central: CBCentralManager) {}
+    nonisolated func centralManagerDidUpdateState(_ central: CBCentralManager) {
+        MainActor.assumeIsolated {
+            guard let cont = powerContinuation else { return }
+            switch central.state {
+            case .poweredOn:
+                powerContinuation = nil
+                cont.resume()
+            case .unauthorized, .poweredOff, .unsupported:
+                powerContinuation = nil
+                cont.resume(throwing: PinControlError.bluetoothUnavailable)
+            default:
+                break  // .unknown / .resetting — keep waiting
+            }
+        }
+    }
 
     nonisolated func centralManager(_ central: CBCentralManager,
                                     didDiscover peripheral: CBPeripheral,
